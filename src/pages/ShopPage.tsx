@@ -1,0 +1,332 @@
+import { useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { SlidersHorizontal, Grid, List, X } from 'lucide-react';
+import MainLayout from '@/layouts/MainLayout';
+import ProductCard from '@/components/ProductCard';
+import { Button } from '@/components/ui/button';
+import { products, categories, subcategories } from '@/data/products';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Slider } from '@/components/ui/slider';
+
+const ShopPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [sortBy, setSortBy] = useState('featured');
+  const [priceRange, setPriceRange] = useState([0, 30000]);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  const selectedCategory = searchParams.get('category') || '';
+  const selectedSubcategory = searchParams.get('subcategory') || '';
+
+  const filteredProducts = useMemo(() => {
+    let result = [...products];
+
+    // Filter by category
+    if (selectedCategory) {
+      result = result.filter((p) => p.category === selectedCategory);
+    }
+
+    // Filter by subcategory
+    if (selectedSubcategory) {
+      result = result.filter((p) => p.subcategory === selectedSubcategory);
+    }
+
+    // Filter by price range
+    result = result.filter(
+      (p) => p.price >= priceRange[0] && p.price <= priceRange[1]
+    );
+
+    // Sort
+    switch (sortBy) {
+      case 'price-low':
+        result.sort((a, b) => a.price - b.price);
+        break;
+      case 'price-high':
+        result.sort((a, b) => b.price - a.price);
+        break;
+      case 'rating':
+        result.sort((a, b) => b.rating - a.rating);
+        break;
+      case 'newest':
+        result = result.filter((p) => p.isNew).concat(result.filter((p) => !p.isNew));
+        break;
+      default:
+        // Featured - bestsellers first
+        result = result.filter((p) => p.isBestSeller).concat(result.filter((p) => !p.isBestSeller));
+    }
+
+    return result;
+  }, [selectedCategory, selectedSubcategory, priceRange, sortBy]);
+
+  const handleCategoryChange = (category: string) => {
+    if (category === selectedCategory) {
+      searchParams.delete('category');
+      searchParams.delete('subcategory');
+    } else {
+      searchParams.set('category', category);
+      searchParams.delete('subcategory');
+    }
+    setSearchParams(searchParams);
+  };
+
+  const handleSubcategoryChange = (subcategory: string) => {
+    if (subcategory === selectedSubcategory) {
+      searchParams.delete('subcategory');
+    } else {
+      searchParams.set('subcategory', subcategory);
+    }
+    setSearchParams(searchParams);
+  };
+
+  const clearFilters = () => {
+    setSearchParams({});
+    setPriceRange([0, 30000]);
+    setSortBy('featured');
+  };
+
+  const activeFiltersCount =
+    (selectedCategory ? 1 : 0) +
+    (selectedSubcategory ? 1 : 0) +
+    (priceRange[0] > 0 || priceRange[1] < 30000 ? 1 : 0);
+
+  const FilterContent = () => (
+    <div className="space-y-6">
+      {/* Categories */}
+      <div>
+        <h3 className="font-serif text-lg font-medium mb-4">Categories</h3>
+        <div className="space-y-3">
+          {categories.map((category) => (
+            <div key={category.id} className="flex items-center gap-3">
+              <Checkbox
+                id={category.id}
+                checked={selectedCategory === category.id}
+                onCheckedChange={() => handleCategoryChange(category.id)}
+              />
+              <label
+                htmlFor={category.id}
+                className="font-sans text-sm cursor-pointer"
+              >
+                {category.name}
+              </label>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Subcategories */}
+      {selectedCategory && subcategories[selectedCategory as keyof typeof subcategories] && (
+        <div>
+          <h3 className="font-serif text-lg font-medium mb-4">Type</h3>
+          <div className="space-y-3">
+            {subcategories[selectedCategory as keyof typeof subcategories].map((sub) => (
+              <div key={sub} className="flex items-center gap-3">
+                <Checkbox
+                  id={sub}
+                  checked={selectedSubcategory === sub}
+                  onCheckedChange={() => handleSubcategoryChange(sub)}
+                />
+                <label htmlFor={sub} className="font-sans text-sm cursor-pointer">
+                  {sub}
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Price Range */}
+      <div>
+        <h3 className="font-serif text-lg font-medium mb-4">Price Range</h3>
+        <div className="px-2">
+          <Slider
+            value={priceRange}
+            onValueChange={setPriceRange}
+            min={0}
+            max={30000}
+            step={500}
+            className="mb-4"
+          />
+          <div className="flex justify-between text-sm font-sans text-muted-foreground">
+            <span>₹{priceRange[0].toLocaleString()}</span>
+            <span>₹{priceRange[1].toLocaleString()}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Clear Filters */}
+      {activeFiltersCount > 0 && (
+        <Button variant="outline" onClick={clearFilters} className="w-full">
+          Clear All Filters
+        </Button>
+      )}
+    </div>
+  );
+
+  return (
+    <MainLayout>
+      {/* Hero */}
+      <section className="bg-muted py-12">
+        <div className="container mx-auto px-4 text-center">
+          <h1 className="font-serif text-4xl md:text-5xl font-semibold mb-4">
+            {selectedCategory
+              ? categories.find((c) => c.id === selectedCategory)?.name + "'s Collection"
+              : 'Our Collection'}
+          </h1>
+          <p className="text-muted-foreground font-sans max-w-2xl mx-auto">
+            Explore our curated selection of elegant apparel. From traditional to contemporary,
+            find the perfect piece that speaks to your style.
+          </p>
+        </div>
+      </section>
+
+      <section className="py-8">
+        <div className="container mx-auto px-4">
+          {/* Active Filters */}
+          {activeFiltersCount > 0 && (
+            <div className="flex flex-wrap items-center gap-2 mb-6">
+              <span className="text-sm font-sans text-muted-foreground">Active Filters:</span>
+              {selectedCategory && (
+                <button
+                  onClick={() => handleCategoryChange(selectedCategory)}
+                  className="inline-flex items-center gap-1 bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-sans"
+                >
+                  {categories.find((c) => c.id === selectedCategory)?.name}
+                  <X size={14} />
+                </button>
+              )}
+              {selectedSubcategory && (
+                <button
+                  onClick={() => handleSubcategoryChange(selectedSubcategory)}
+                  className="inline-flex items-center gap-1 bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-sans"
+                >
+                  {selectedSubcategory}
+                  <X size={14} />
+                </button>
+              )}
+              {(priceRange[0] > 0 || priceRange[1] < 30000) && (
+                <button
+                  onClick={() => setPriceRange([0, 30000])}
+                  className="inline-flex items-center gap-1 bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-sans"
+                >
+                  ₹{priceRange[0].toLocaleString()} - ₹{priceRange[1].toLocaleString()}
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Toolbar */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+            <p className="text-sm font-sans text-muted-foreground">
+              Showing {filteredProducts.length} products
+            </p>
+
+            <div className="flex items-center gap-4">
+              {/* Mobile Filter Button */}
+              <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" className="lg:hidden">
+                    <SlidersHorizontal size={18} className="mr-2" />
+                    Filters
+                    {activeFiltersCount > 0 && (
+                      <span className="ml-2 bg-primary text-primary-foreground w-5 h-5 rounded-full text-xs flex items-center justify-center">
+                        {activeFiltersCount}
+                      </span>
+                    )}
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-full sm:max-w-md">
+                  <SheetHeader>
+                    <SheetTitle className="font-serif text-2xl">Filters</SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-6">
+                    <FilterContent />
+                  </div>
+                </SheetContent>
+              </Sheet>
+
+              {/* Sort */}
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="featured">Featured</SelectItem>
+                  <SelectItem value="newest">Newest</SelectItem>
+                  <SelectItem value="price-low">Price: Low to High</SelectItem>
+                  <SelectItem value="price-high">Price: High to Low</SelectItem>
+                  <SelectItem value="rating">Highest Rated</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* View Mode */}
+              <div className="hidden md:flex items-center border border-border rounded-md">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`p-2 ${viewMode === 'grid' ? 'bg-muted' : ''}`}
+                >
+                  <Grid size={18} />
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`p-2 ${viewMode === 'list' ? 'bg-muted' : ''}`}
+                >
+                  <List size={18} />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Main Content */}
+          <div className="flex gap-8">
+            {/* Desktop Sidebar */}
+            <aside className="hidden lg:block w-64 flex-shrink-0">
+              <FilterContent />
+            </aside>
+
+            {/* Products Grid */}
+            <div className="flex-1">
+              {filteredProducts.length === 0 ? (
+                <div className="text-center py-16">
+                  <h3 className="font-serif text-xl mb-2">No products found</h3>
+                  <p className="text-muted-foreground font-sans mb-4">
+                    Try adjusting your filters to find what you're looking for.
+                  </p>
+                  <Button onClick={clearFilters}>Clear Filters</Button>
+                </div>
+              ) : (
+                <div
+                  className={
+                    viewMode === 'grid'
+                      ? 'grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6'
+                      : 'space-y-6'
+                  }
+                >
+                  {filteredProducts.map((product) => (
+                    <ProductCard key={product.id} product={product} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+    </MainLayout>
+  );
+};
+
+export default ShopPage;

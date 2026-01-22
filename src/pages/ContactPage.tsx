@@ -1,0 +1,252 @@
+import { useState } from 'react';
+import { MapPin, Phone, Mail, Clock, Send, Instagram, Facebook, MessageCircle } from 'lucide-react';
+import MainLayout from '@/layouts/MainLayout';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
+
+const ContactPage = () => {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    subject: '',
+    message: '',
+  });
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    toast.success('Message sent successfully!', {
+      description: "We'll get back to you within 24 hours.",
+    });
+    setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
+  };
+
+  return (
+    <MainLayout>
+      {/* Hero */}
+      <section className="py-16 bg-muted">
+        <div className="container mx-auto px-4 text-center">
+          <h1 className="font-serif text-4xl md:text-5xl font-semibold mb-4">
+            Get in Touch
+          </h1>
+          <p className="text-muted-foreground font-sans max-w-2xl mx-auto">
+            Have a question about our products or want to share feedback?
+            We'd love to hear from you!
+          </p>
+        </div>
+      </section>
+
+      <section className="py-16">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            {/* Contact Form */}
+            <div className="bg-card rounded-xl shadow-luxe p-8">
+              <h2 className="font-serif text-2xl font-semibold mb-6">Send us a Message</h2>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="name">Full Name</Label>
+                    <Input
+                      id="name"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      placeholder="Your name"
+                      required
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      placeholder="your@email.com"
+                      required
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="phone">Phone (Optional)</Label>
+                    <Input
+                      id="phone"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      placeholder="+91 98765 43210"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="subject">Subject</Label>
+                    <Input
+                      id="subject"
+                      name="subject"
+                      value={formData.subject}
+                      onChange={handleInputChange}
+                      placeholder="How can we help?"
+                      required
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="message">Message</Label>
+                  <Textarea
+                    id="message"
+                    name="message"
+                    value={formData.message}
+                    onChange={handleInputChange}
+                    placeholder="Tell us more..."
+                    rows={5}
+                    required
+                    className="mt-1"
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="w-full gradient-primary text-primary-foreground"
+                >
+                  <Send size={18} className="mr-2" />
+                  Send Message
+                </Button>
+              </form>
+            </div>
+
+            {/* Contact Info */}
+            <div className="space-y-8">
+              {/* Info Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-card rounded-xl shadow-luxe p-6">
+                  <div className="w-12 h-12 gradient-primary rounded-full flex items-center justify-center mb-4">
+                    <MapPin size={24} className="text-white" />
+                  </div>
+                  <h3 className="font-serif text-lg font-medium mb-2">Visit Us</h3>
+                  <p className="text-muted-foreground font-sans text-sm">
+                    123 Fashion Street, Silk Market,<br />
+                    Mumbai, Maharashtra 400001
+                  </p>
+                </div>
+
+                <div className="bg-card rounded-xl shadow-luxe p-6">
+                  <div className="w-12 h-12 gradient-primary rounded-full flex items-center justify-center mb-4">
+                    <Phone size={24} className="text-white" />
+                  </div>
+                  <h3 className="font-serif text-lg font-medium mb-2">Call Us</h3>
+                  <p className="text-muted-foreground font-sans text-sm">
+                    +91 98765 43210<br />
+                    +91 98765 43211
+                  </p>
+                </div>
+
+                <div className="bg-card rounded-xl shadow-luxe p-6">
+                  <div className="w-12 h-12 gradient-primary rounded-full flex items-center justify-center mb-4">
+                    <Mail size={24} className="text-white" />
+                  </div>
+                  <h3 className="font-serif text-lg font-medium mb-2">Email Us</h3>
+                  <p className="text-muted-foreground font-sans text-sm">
+                    hello@mahamitra.com<br />
+                    support@mahamitra.com
+                  </p>
+                </div>
+
+                <div className="bg-card rounded-xl shadow-luxe p-6">
+                  <div className="w-12 h-12 gradient-primary rounded-full flex items-center justify-center mb-4">
+                    <Clock size={24} className="text-white" />
+                  </div>
+                  <h3 className="font-serif text-lg font-medium mb-2">Business Hours</h3>
+                  <p className="text-muted-foreground font-sans text-sm">
+                    Mon - Sat: 10:00 AM - 8:00 PM<br />
+                    Sunday: 11:00 AM - 6:00 PM
+                  </p>
+                </div>
+              </div>
+
+              {/* Social Links */}
+              <div className="bg-muted rounded-xl p-6">
+                <h3 className="font-serif text-lg font-medium mb-4">Connect With Us</h3>
+                <div className="flex gap-4">
+                  <a
+                    href="#"
+                    className="w-12 h-12 bg-card rounded-full flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors shadow"
+                  >
+                    <Instagram size={24} />
+                  </a>
+                  <a
+                    href="#"
+                    className="w-12 h-12 bg-card rounded-full flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors shadow"
+                  >
+                    <Facebook size={24} />
+                  </a>
+                  <a
+                    href="#"
+                    className="w-12 h-12 bg-card rounded-full flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors shadow"
+                  >
+                    <MessageCircle size={24} />
+                  </a>
+                </div>
+                <p className="text-muted-foreground font-sans text-sm mt-4">
+                  Follow us for style inspiration, new arrivals, and exclusive offers!
+                </p>
+              </div>
+
+              {/* Map Placeholder */}
+              <div className="bg-muted rounded-xl h-64 flex items-center justify-center">
+                <div className="text-center">
+                  <MapPin size={48} className="mx-auto text-muted-foreground mb-2" />
+                  <p className="text-muted-foreground font-sans text-sm">
+                    Map integration would go here
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Teaser */}
+      <section className="py-16 bg-muted">
+        <div className="container mx-auto px-4 text-center">
+          <h2 className="font-serif text-2xl md:text-3xl font-semibold mb-4">
+            Frequently Asked Questions
+          </h2>
+          <p className="text-muted-foreground font-sans mb-8 max-w-xl mx-auto">
+            Find quick answers to common questions about orders, shipping, returns, and more.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            {[
+              { q: 'What are the shipping charges?', a: 'Free shipping on orders above ₹2,999. Otherwise, ₹199 flat rate.' },
+              { q: 'How do I return an item?', a: '7-day hassle-free returns. Contact us to initiate a return.' },
+              { q: 'Do you offer COD?', a: 'Yes! Cash on Delivery is available across India.' },
+            ].map((faq, index) => (
+              <div key={index} className="bg-card rounded-xl p-6 text-left shadow-sm">
+                <h4 className="font-sans font-medium mb-2">{faq.q}</h4>
+                <p className="text-muted-foreground font-sans text-sm">{faq.a}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </MainLayout>
+  );
+};
+
+export default ContactPage;

@@ -1,0 +1,248 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Montserrat:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Mahamitra Women's Apparel Boutique - Luxe Design System */
+
+@layer base {
+  :root {
+    /* Luxe Boutique Color Palette */
+    --background: 0 0% 100%;
+    --foreground: 220 20% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 10%;
+
+    /* Primary - Soft Pink */
+    --primary: 330 86% 70%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Rose */
+    --secondary: 351 95% 73%;
+    --secondary-foreground: 0 0% 100%;
+
+    /* Muted - Light Pink/Gray */
+    --muted: 330 30% 96%;
+    --muted-foreground: 220 10% 45%;
+
+    /* Accent - Gold for luxe feel */
+    --accent: 43 74% 49%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 330 20% 90%;
+    --input: 330 20% 90%;
+    --ring: 330 86% 70%;
+
+    --radius: 0.5rem;
+
+    /* Custom Boutique Variables */
+    --gold: 43 74% 49%;
+    --gold-light: 43 74% 70%;
+    --cream: 40 33% 97%;
+    --blush: 330 50% 95%;
+    --rose-light: 351 70% 90%;
+
+    --sidebar-background: 330 30% 98%;
+    --sidebar-foreground: 220 20% 10%;
+    --sidebar-primary: 330 86% 70%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 330 30% 94%;
+    --sidebar-accent-foreground: 220 20% 10%;
+    --sidebar-border: 330 20% 90%;
+    --sidebar-ring: 330 86% 70%;
+  }
+
+  .dark {
+    --background: 220 20% 10%;
+    --foreground: 0 0% 98%;
+
+    --card: 220 20% 12%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 220 20% 12%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 330 86% 70%;
+    --primary-foreground: 220 20% 10%;
+
+    --secondary: 351 95% 73%;
+    --secondary-foreground: 220 20% 10%;
+
+    --muted: 220 15% 20%;
+    --muted-foreground: 220 10% 65%;
+
+    --accent: 43 74% 49%;
+    --accent-foreground: 220 20% 10%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 220 15% 20%;
+    --input: 220 15% 20%;
+    --ring: 330 86% 70%;
+
+    --sidebar-background: 220 20% 8%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 330 86% 70%;
+    --sidebar-primary-foreground: 220 20% 10%;
+    --sidebar-accent: 220 15% 15%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 220 15% 20%;
+    --sidebar-ring: 330 86% 70%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif;
+  }
+}
+
+@layer utilities {
+  /* Luxe Animations */
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.6s ease-out forwards;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.4s ease-out forwards;
+  }
+
+  /* Hover Effects */
+  .hover-lift {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  .hover-lift:hover {
+    @apply -translate-y-2 shadow-xl;
+  }
+
+  .hover-glow {
+    @apply transition-all duration-300;
+  }
+
+  .hover-glow:hover {
+    box-shadow: 0 0 30px hsl(var(--primary) / 0.3);
+  }
+
+  /* Gold Gradient */
+  .gradient-gold {
+    background: linear-gradient(135deg, hsl(var(--gold)) 0%, hsl(var(--gold-light)) 100%);
+  }
+
+  /* Pink Gradient */
+  .gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--secondary)) 100%);
+  }
+
+  /* Elegant Border */
+  .border-elegant {
+    border: 1px solid hsl(var(--gold) / 0.3);
+  }
+
+  /* Text Gradient */
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--secondary)) 100%);
+  }
+
+  /* Luxe Shadow */
+  .shadow-luxe {
+    box-shadow: 0 4px 20px -5px hsl(var(--primary) / 0.15),
+                0 2px 10px -5px hsl(var(--gold) / 0.1);
+  }
+
+  .shadow-luxe-lg {
+    box-shadow: 0 10px 40px -10px hsl(var(--primary) / 0.2),
+                0 4px 20px -10px hsl(var(--gold) / 0.15);
+  }
+
+  /* Image Zoom Container */
+  .img-zoom-container {
+    @apply overflow-hidden;
+  }
+
+  .img-zoom-container img {
+    @apply transition-transform duration-500 ease-out;
+  }
+
+  .img-zoom-container:hover img {
+    @apply scale-110;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Smooth Scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.7);
+}
