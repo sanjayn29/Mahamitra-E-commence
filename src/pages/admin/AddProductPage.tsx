@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -81,26 +82,42 @@ const AddProductPage = () => {
     setLoading(true);
     
     try {
-      // Mock image upload and product addition
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
       let imageUrl = '';
+      
+      // Skip image upload for now - just use preview URL
       if (imageFile) {
-        imageUrl = imagePreview; // Use preview as a mock URL
+        imageUrl = imagePreview;
       }
 
+      const tableName = `${formData.category}_products`;
+      
       const productData = {
-        ...formData,
+        productId: formData.productId,
+        name: formData.name,
+        material: formData.material,
         cost: formData.cost ? parseInt(formData.cost) : 0,
+        description: formData.description,
+        status: formData.status,
         sizes: formData.sizes.split(',').map(s => s.trim()).filter(s => s),
         colors: formData.colors.split(',').map(c => c.trim()).filter(c => c),
         image: imageUrl
       };
 
-      console.log('Product data submitted:', productData);
+      console.log('Attempting to insert into table:', tableName);
+      console.log('Product data:', JSON.stringify(productData, null, 2));
 
-      toast.success('Product added successfully! (Mock)', {
-        description: `${formData.name} has been added to the ${formData.category} collection.`
+      const { error: insertError, data } = await supabase
+        .from(tableName)
+        .insert([productData]);
+
+      if (insertError) {
+        throw insertError;
+      }
+
+      console.log('Insert successful:', data);
+
+      toast.success('Product added successfully!', {
+        description: `${formData.name} has been added to the ${formData.category} collection`
       });
 
       // Reset form
@@ -119,10 +136,17 @@ const AddProductPage = () => {
       setImageFile(null);
       setImagePreview('');
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding product:', error);
+      console.error('Error details:', JSON.stringify({
+        message: error.message,
+        status: error.status,
+        statusText: error.statusText,
+        error: error.error,
+        fullError: JSON.stringify(error)
+      }, null, 2));
       toast.error('Failed to add product', {
-        description: 'An unexpected error occurred.'
+        description: error.message || 'Please try again or check your internet connection'
       });
     } finally {
       setLoading(false);
