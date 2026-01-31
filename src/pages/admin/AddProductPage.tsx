@@ -1,19 +1,20 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { collection, doc, setDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Package, Upload } from 'lucide-react';
+import { ArrowLeft, Package, Upload, X, ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 const AddProductPage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>('');
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [formData, setFormData] = useState({
     productId: '',
     name: '',
@@ -40,6 +41,18 @@ const AddProductPage = () => {
     }));
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const generateProductId = () => {
     const prefix = formData.category ? formData.category.toUpperCase().substring(0, 3) : 'PRD';
     const randomNum = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
@@ -48,6 +61,11 @@ const AddProductPage = () => {
       ...prev,
       productId
     }));
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -63,36 +81,48 @@ const AddProductPage = () => {
     setLoading(true);
     
     try {
-      const selectedCategory = categories.find(cat => cat.value === formData.category);
-      const collectionName = selectedCategory?.collection || 'women product';
-      
+      // Mock image upload and product addition
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      let imageUrl = '';
+      if (imageFile) {
+        imageUrl = imagePreview; // Use preview as a mock URL
+      }
+
       const productData = {
-        productId: formData.productId,
-        name: formData.name,
-        category: formData.category,
-        material: formData.material,
+        ...formData,
         cost: formData.cost ? parseInt(formData.cost) : 0,
-        description: formData.description,
-        status: formData.status,
         sizes: formData.sizes.split(',').map(s => s.trim()).filter(s => s),
         colors: formData.colors.split(',').map(c => c.trim()).filter(c => c),
-        image: formData.image,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        image: imageUrl
       };
 
-      // Use productId as document ID
-      await setDoc(doc(db, collectionName, formData.productId), productData);
-      
-      toast.success('Product added successfully!', {
-        description: `${formData.name} has been added to ${selectedCategory?.label} collection`
+      console.log('Product data submitted:', productData);
+
+      toast.success('Product added successfully! (Mock)', {
+        description: `${formData.name} has been added to the ${formData.category} collection.`
       });
-      
-      navigate('/admin/dashboard');
+
+      // Reset form
+      setFormData({
+        productId: '',
+        name: '',
+        category: '',
+        material: '',
+        cost: '',
+        description: '',
+        status: 'available',
+        sizes: '',
+        colors: '',
+        image: ''
+      });
+      setImageFile(null);
+      setImagePreview('');
+
     } catch (error) {
       console.error('Error adding product:', error);
       toast.error('Failed to add product', {
-        description: 'Please try again'
+        description: 'An unexpected error occurred.'
       });
     } finally {
       setLoading(false);
@@ -181,13 +211,66 @@ const AddProductPage = () => {
                   id="material"
                   value={formData.material}
                   onChange={(e) => handleInputChange('material', e.target.value)}
-                  placeholder="Silk, Cotton, Polyester..."
+                  placeholder="Cotton, Silk, Polyester, etc."
                 />
+              </div>
+
+              {/* Product Image Upload */}
+              <div className="space-y-2">
+                <Label>Product Image</Label>
+                {!imagePreview ? (
+                  <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
+                    <ImageIcon size={48} className="mx-auto text-muted-foreground mb-4" />
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">
+                        Click to upload or drag and drop
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        PNG, JPG, JPEG up to 5MB
+                      </p>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="hidden"
+                        id="image-upload"
+                      />
+                      <Label htmlFor="image-upload">
+                        <Button type="button" variant="outline" className="cursor-pointer" asChild>
+                          <span>
+                            <Upload size={16} className="mr-2" />
+                            Choose Image
+                          </span>
+                        </Button>
+                      </Label>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="w-full h-48 object-cover rounded-lg border"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-2 right-2"
+                      onClick={removeImage}
+                    >
+                      <X size={16} />
+                    </Button>
+                    <div className="absolute bottom-2 left-2 bg-black/50 text-white px-2 py-1 rounded text-xs">
+                      {imageFile?.name}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Cost */}
               <div className="space-y-2">
-                <Label htmlFor="cost">Cost (₹)</Label>
+                <Label htmlFor="cost">Cost (INR)</Label>
                 <Input
                   id="cost"
                   type="number"

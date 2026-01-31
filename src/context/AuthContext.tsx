@@ -1,14 +1,13 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import {
-  User,
-  signInWithRedirect,
-  getRedirectResult,
-  signOut as firebaseSignOut,
-  onAuthStateChanged,
-} from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { auth, googleProvider, db } from '@/lib/firebase';
+import { createContext, useContext, useState, ReactNode } from 'react';
 import { toast } from 'sonner';
+
+// Mock User type - replace with your actual user structure if needed
+interface User {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+}
 
 interface UserData {
   email: string;
@@ -31,97 +30,60 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Check for redirect result on component mount
-    const checkRedirectResult = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result?.user) {
-          const user = result.user;
-          // Create or update user document in Firestore
-          const userRef = doc(db, 'Users', user.email!);
-          const userDoc = await getDoc(userRef);
-
-          const userData: UserData = {
-            email: user.email!,
-            displayName: user.displayName || '',
-            photoURL: user.photoURL || '',
-            createdAt: userDoc.exists() ? userDoc.data().createdAt : new Date().toISOString(),
-            lastLoginAt: new Date().toISOString(),
-          };
-
-          await setDoc(userRef, userData, { merge: true });
-          setUserData(userData);
-
-          toast.success('Welcome to Mahamitra!', {
-            description: `Signed in as ${user.displayName}`,
-          });
-        }
-      } catch (error: any) {
-        console.error('Error handling redirect:', error);
-        if (error.code !== 'auth/popup-closed-by-user') {
-          toast.error('Sign in failed', {
-            description: error.message || 'Please try again',
-          });
-        }
-      }
-    };
-
-    checkRedirectResult();
-
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
-      if (user) {
-        // Fetch user data from Firestore
-        const userDoc = await getDoc(doc(db, 'Users', user.email!));
-        if (userDoc.exists()) {
-          setUserData(userDoc.data() as UserData);
-        }
-      } else {
-        setUserData(null);
-      }
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
+  const [loading, setLoading] = useState(false); // Set to false as we are not loading from a service
 
   const signInWithGoogle = async () => {
+    setLoading(true);
     try {
-      // Use redirect instead of popup to avoid COOP issues
-      await signInWithRedirect(auth, googleProvider);
-      // The result will be handled in the useEffect with getRedirectResult
-    } catch (error: any) {
-      console.error('Error signing in with Google:', error);
-      
-      // Provide specific error messages
-      let errorMessage = 'Please try again';
-      if (error.code === 'auth/configuration-not-found') {
-        errorMessage = 'Google Sign-In is not configured. Please enable it in Firebase Console.';
-      } else if (error.code === 'auth/unauthorized-domain') {
-        errorMessage = 'This domain is not authorized. Please add it in Firebase Console.';
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      toast.error('Sign in failed', {
-        description: errorMessage,
+      // This is a mock sign-in.
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      const mockUser: User = {
+        uid: 'mock-user-123',
+        email: 'mock.user@example.com',
+        displayName: 'Mock User',
+        photoURL: 'https://i.pravatar.cc/150?u=mockuser',
+      };
+
+      const mockUserData: UserData = {
+        email: mockUser.email!,
+        displayName: mockUser.displayName || 'Mock User',
+        photoURL: mockUser.photoURL || '',
+        createdAt: new Date().toISOString(),
+        lastLoginAt: new Date().toISOString(),
+      };
+
+      setUser(mockUser);
+      setUserData(mockUserData);
+
+      toast.success('Welcome to Mahamitra!', {
+        description: `Signed in as ${mockUser.displayName}`,
       });
+    } catch (error: any) {
+      console.error('Error signing in with Google (mock):', error);
+      toast.error('Sign in failed', {
+        description: 'An unexpected error occurred during mock sign-in.',
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
   const signOut = async () => {
+    setLoading(true);
     try {
-      await firebaseSignOut(auth);
+      // This is a mock sign-out.
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setUser(null);
       setUserData(null);
       toast.success('Signed out successfully');
     } catch (error: any) {
-      console.error('Error signing out:', error);
+      console.error('Error signing out (mock):', error);
       toast.error('Sign out failed', {
-        description: error.message || 'Please try again',
+        description: 'An unexpected error occurred during mock sign-out.',
       });
+    } finally {
+      setLoading(false);
     }
   };
 
