@@ -9,12 +9,14 @@ interface AdminContextType {
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
 export const AdminProvider = ({ children }: { children: ReactNode }) => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    return sessionStorage.getItem('adminLoggedIn') === 'true';
+  });
 
   const login = (email: string, password: string): boolean => {
-    // Mock login - accepts any credentials
-    if (email && password) {
+    if (email === 'mahamitra@kec' && password === 'kec@mahamitra') {
       setIsLoggedIn(true);
+      sessionStorage.setItem('adminLoggedIn', 'true');
       return true;
     }
     return false;
@@ -22,6 +24,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = () => {
     setIsLoggedIn(false);
+    sessionStorage.removeItem('adminLoggedIn');
   };
 
   return (

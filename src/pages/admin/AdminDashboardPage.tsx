@@ -3,15 +3,17 @@ import { Package, ShoppingCart, DollarSign, Users, TrendingUp, LogOut, Plus, Edi
 import { useAdmin } from '@/context/AdminContext';
 import { Button } from '@/components/ui/button';
 import { products } from '@/data/products';
+import { toast } from 'sonner';
 
 const AdminDashboardPage = () => {
-  const { isLoggedIn, logout } = useAdmin();
+  const { logout } = useAdmin();
   const navigate = useNavigate();
 
-  if (!isLoggedIn) {
+  const handleLogout = () => {
+    logout();
+    toast.success('Logged out successfully');
     navigate('/admin');
-    return null;
-  }
+  };
 
   const stats = [
     { label: 'Total Revenue', value: '₹12,45,890', icon: DollarSign, change: '+12%' },
@@ -33,7 +35,7 @@ const AdminDashboardPage = () => {
       <header className="bg-card border-b border-border sticky top-0 z-50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link to="/" className="font-serif text-xl font-semibold">Mahamitra Admin</Link>
-          <Button variant="ghost" onClick={() => { logout(); navigate('/admin'); }}>
+          <Button variant="ghost" onClick={handleLogout}>
             <LogOut size={18} className="mr-2" /> Logout
           </Button>
         </div>
@@ -89,9 +91,11 @@ const AdminDashboardPage = () => {
           <div className="bg-card rounded-xl shadow-luxe p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="font-serif text-xl font-semibold">Products</h2>
-              <Button size="sm" className="gradient-primary text-primary-foreground">
-                <Plus size={16} className="mr-1" /> Add
-              </Button>
+              <Link to="/admin/add-product">
+                <Button size="sm" className="gradient-primary text-primary-foreground">
+                  <Plus size={16} className="mr-1" /> Add Product
+                </Button>
+              </Link>
             </div>
             <div className="space-y-3">
               {products.slice(0, 4).map((product) => (

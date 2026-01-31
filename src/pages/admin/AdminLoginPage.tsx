@@ -4,6 +4,7 @@ import { useAdmin } from '@/context/AdminContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
 
 const AdminLoginPage = () => {
   const [email, setEmail] = useState('');
@@ -14,7 +15,14 @@ const AdminLoginPage = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (login(email, password)) {
+      toast.success('Welcome Admin!', {
+        description: 'Successfully logged in to admin dashboard',
+      });
       navigate('/admin/dashboard');
+    } else {
+      toast.error('Invalid Credentials', {
+        description: 'Please check your email and password',
+      });
     }
   };
 
@@ -28,15 +36,35 @@ const AdminLoginPage = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@mahamitra.com" className="mt-1" required />
+            <Input 
+              id="email" 
+              type="email" 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+              placeholder="mahamitra@kec" 
+              className="mt-1" 
+              required 
+            />
           </div>
           <div>
             <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="mt-1" required />
+            <Input 
+              id="password" 
+              type="password" 
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)} 
+              placeholder="kec@mahamitra" 
+              className="mt-1" 
+              required 
+            />
           </div>
-          <Button type="submit" className="w-full gradient-primary text-primary-foreground">Sign In</Button>
+          <Button type="submit" className="w-full gradient-primary text-primary-foreground">
+            Sign In
+          </Button>
         </form>
-        <p className="text-center text-xs text-muted-foreground mt-6">Enter any credentials to access the demo dashboard</p>
+        <p className="text-center text-xs text-muted-foreground mt-6">
+          Admin access required. Use provided credentials.
+        </p>
       </div>
     </div>
   );

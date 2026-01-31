@@ -15,8 +15,10 @@ import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
 import LoginPage from "./pages/LoginPage";
 import AccountPage from "./pages/AccountPage";
+import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
 import AdminLoginPage from "./pages/admin/AdminLoginPage";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
+import AddProductPage from "./pages/admin/AddProductPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,7 +43,10 @@ const App = () => (
               <Route path="/login" element={<LoginPage />} />
               <Route path="/account" element={<AccountPage />} />
               <Route path="/admin" element={<AdminLoginPage />} />
-              <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+              <Route element={<ProtectedAdminRoute />}>
+                <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+                <Route path="/admin/add-product" element={<AddProductPage />} />
+              </Route>
               <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
