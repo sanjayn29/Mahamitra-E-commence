@@ -7,21 +7,21 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
 const AdminLoginPage = () => {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const { login } = useAdmin();
   const navigate = useNavigate();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (login(email, password)) {
+    if (login(username, password)) {
       toast.success('Welcome Admin!', {
         description: 'Successfully logged in to admin dashboard',
       });
       navigate('/admin/dashboard');
     } else {
       toast.error('Invalid Credentials', {
-        description: 'Please check your email and password',
+        description: 'Please check your username and password',
       });
     }
   };
@@ -35,13 +35,13 @@ const AdminLoginPage = () => {
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="username">Username</Label>
             <Input 
-              id="email" 
-              type="email" 
-              value={email} 
-              onChange={(e) => setEmail(e.target.value)} 
-              placeholder="mahamitra@kec" 
+              id="username" 
+              type="text" 
+              value={username} 
+              onChange={(e) => setUsername(e.target.value)} 
+              placeholder="sanjayn" 
               className="mt-1" 
               required 
             />
@@ -53,7 +53,7 @@ const AdminLoginPage = () => {
               type="password" 
               value={password} 
               onChange={(e) => setPassword(e.target.value)} 
-              placeholder="kec@mahamitra" 
+              placeholder="••••••••" 
               className="mt-1" 
               required 
             />

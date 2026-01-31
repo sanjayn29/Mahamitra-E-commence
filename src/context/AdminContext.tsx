@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 interface AdminContextType {
   isLoggedIn: boolean;
-  login: (email: string, password: string) => boolean;
+  login: (username: string, password: string) => boolean;
   logout: () => void;
 }
 
@@ -13,8 +13,8 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
     return sessionStorage.getItem('adminLoggedIn') === 'true';
   });
 
-  const login = (email: string, password: string): boolean => {
-    if (email === 'mahamitra@kec' && password === 'kec@mahamitra') {
+  const login = (username: string, password: string): boolean => {
+    if (username === 'sanjayn' && password === 'N.Sanjay@2005') {
       setIsLoggedIn(true);
       sessionStorage.setItem('adminLoggedIn', 'true');
       return true;
