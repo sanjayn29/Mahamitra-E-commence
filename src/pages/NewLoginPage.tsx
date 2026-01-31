@@ -53,7 +53,7 @@ const LoginPage = () => {
       toast.success('Login successful!', {
         description: 'Welcome back!',
       });
-      navigate('/');
+      navigate('/profile');
     } catch (error: any) {
       console.error('Login error:', error);
       toast.error('Login failed', {
@@ -62,7 +62,7 @@ const LoginPage = () => {
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="container mx-auto flex items-center justify-center min-h-screen">

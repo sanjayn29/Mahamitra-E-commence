@@ -102,9 +102,9 @@ const Header = () => {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="relative">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={user.photoURL || ''} alt={user.displayName || 'User'} />
+                        <AvatarImage src={user.user_metadata.avatar_url || ''} alt={user.user_metadata.name || 'User'} />
                         <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                          {user.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}
+                          {user.user_metadata.name?.charAt(0) || user.email?.charAt(0) || 'U'}
                         </AvatarFallback>
                       </Avatar>
                     </Button>
@@ -112,30 +112,19 @@ const Header = () => {
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuLabel>
                       <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">{user.displayName}</p>
+                        <p className="text-sm font-medium leading-none">{user.user_metadata.name}</p>
                         <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link to="/account" className="cursor-pointer">
-                        My Account
+                      <Link to="/profile" className="cursor-pointer">
+                        My Profile
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link to="/orders" className="cursor-pointer">
                         My Orders
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/wishlist" className="cursor-pointer">
-                        Wishlist
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link to="/admin" className="cursor-pointer">
-                        Admin Portal
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
@@ -146,11 +135,14 @@ const Header = () => {
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                <Link to="/login">
-                  <Button variant="ghost" size="icon">
-                    <User size={20} />
-                  </Button>
-                </Link>
+                <div className="flex items-center gap-2">
+                  <Link to="/login">
+                    <Button variant="ghost">Log In</Button>
+                  </Link>
+                  <Link to="/signup">
+                    <Button>Sign Up</Button>
+                  </Link>
+                </div>
               )}
               <Button
                 variant="ghost"
