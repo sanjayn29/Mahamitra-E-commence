@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { ShoppingBag, Menu, X, User, Heart, Search, LogOut } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
@@ -20,6 +20,7 @@ const Header = () => {
   const { getCartCount, toggleCart } = useCart();
   const { user, signOut } = useAuth();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const cartCount = getCartCount();
 
   const navLinks = [
@@ -33,8 +34,29 @@ const Header = () => {
   ];
 
   const isActive = (path: string) => {
-    if (path === '/') return location.pathname === '/';
-    return location.pathname.startsWith(path.split('?')[0]);
+    // Handle home page
+    if (path === '/') {
+      return location.pathname === '/';
+    }
+    
+    // Handle category-specific links (e.g., /shop?category=women)
+    if (path.includes('?')) {
+      const [basePath, queryString] = path.split('?');
+      const pathParams = new URLSearchParams(queryString);
+      const currentCategory = searchParams.get('category');
+      const linkCategory = pathParams.get('category');
+      
+      return location.pathname === basePath && currentCategory === linkCategory;
+    }
+    
+    // Handle regular shop page (no category)
+    if (path === '/shop') {
+      const currentCategory = searchParams.get('category');
+      return location.pathname === '/shop' && !currentCategory;
+    }
+    
+    // Handle other pages
+    return location.pathname === path;
   };
 
   return (

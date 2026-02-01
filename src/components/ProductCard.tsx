@@ -1,26 +1,35 @@
 import { Link } from 'react-router-dom';
 import { Star, ShoppingBag } from 'lucide-react';
-import { Product } from '@/data/products';
+import { EnhancedProduct } from '@/services/productService';
 import { useCart } from '@/context/CartContext';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
 interface ProductCardProps {
-  product: Product;
+  product: EnhancedProduct;
 }
 
 const ProductCard = ({ product }: ProductCardProps) => {
   const { addItem } = useCart();
-  const discount = product.originalPrice
-    ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+  const discount = product.cost && product.cost !== product.price
+    ? Math.round(((product.cost - product.price) / product.cost) * 100)
     : 0;
 
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    addItem(product, 1, product.sizes[0], product.colors[0]);
+    
+    if (!product.inStock) {
+      toast.error(`${product.name} is out of stock!`);
+      return;
+    }
+
+    const firstSize = product.sizes.length > 0 ? product.sizes[0] : 'One Size';
+    const firstColor = product.colors.length > 0 ? product.colors[0] : 'Default';
+    
+    addItem(product, 1, firstSize, firstColor);
     toast.success(`${product.name} added to cart!`, {
-      description: `Size: ${product.sizes[0]} | Color: ${product.colors[0]}`,
+      description: `Size: ${firstSize} | Color: ${firstColor}`,
     });
   };
 
@@ -30,9 +39,13 @@ const ProductCard = ({ product }: ProductCardProps) => {
         {/* Image Container */}
         <div className="relative aspect-[3/4] img-zoom-container bg-muted">
           <img
-            src={product.images[0]}
+            src={product.images.length > 0 ? product.images[0] : product.image || '/placeholder-image.jpg'}
             alt={product.name}
             className="w-full h-full object-cover"
+            onError={(e) => {
+              // Fallback for broken images
+              e.currentTarget.src = '/placeholder-image.jpg';
+            }}
           />
 
           {/* Badges */}
@@ -42,14 +55,9 @@ const ProductCard = ({ product }: ProductCardProps) => {
                 -{discount}%
               </span>
             )}
-            {product.isNew && (
-              <span className="bg-accent text-accent-foreground text-xs font-sans font-semibold px-2 py-1 rounded">
-                NEW
-              </span>
-            )}
-            {product.isBestSeller && (
-              <span className="gradient-gold text-white text-xs font-sans font-semibold px-2 py-1 rounded">
-                BESTSELLER
+            {!product.inStock && (
+              <span className="bg-destructive text-destructive-foreground text-xs font-sans font-semibold px-2 py-1 rounded">
+                OUT OF STOCK
               </span>
             )}
           </div>
@@ -58,11 +66,12 @@ const ProductCard = ({ product }: ProductCardProps) => {
           <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-foreground/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
             <Button
               onClick={handleQuickAdd}
-              className="w-full bg-background text-foreground hover:bg-primary hover:text-primary-foreground transition-all"
+              disabled={!product.inStock}
+              className="w-full bg-background text-foreground hover:bg-primary hover:text-primary-foreground transition-all disabled:opacity-50"
               size="sm"
             >
               <ShoppingBag size={16} className="mr-2" />
-              Quick Add
+              {product.inStock ? 'Quick Add' : 'Out of Stock'}
             </Button>
           </div>
         </div>
@@ -101,9 +110,9 @@ const ProductCard = ({ product }: ProductCardProps) => {
             <span className="font-sans font-semibold text-foreground">
               ₹{product.price.toLocaleString()}
             </span>
-            {product.originalPrice && (
+            {product.cost && product.cost !== product.price && (
               <span className="text-sm text-muted-foreground line-through font-sans">
-                ₹{product.originalPrice.toLocaleString()}
+                ₹{product.cost.toLocaleString()}
               </span>
             )}
           </div>

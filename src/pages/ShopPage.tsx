@@ -1,10 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { SlidersHorizontal, Grid, List, X } from 'lucide-react';
+import { SlidersHorizontal, Grid, List, X, Loader2 } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
 import ProductCard from '@/components/ProductCard';
 import { Button } from '@/components/ui/button';
-import { products, categories, subcategories } from '@/data/products';
+import { useProducts, useProductsByCategory } from '@/hooks/useProducts';
+import { fetchAllProducts, fetchProductsByCategory, EnhancedProduct } from '@/services/productService';
 import {
   Select,
   SelectContent,
@@ -28,29 +29,47 @@ const ShopPage = () => {
   const [sortBy, setSortBy] = useState('featured');
   const [priceRange, setPriceRange] = useState([0, 30000]);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [products, setProducts] = useState<EnhancedProduct[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const selectedCategory = searchParams.get('category') || '';
-  const selectedSubcategory = searchParams.get('subcategory') || '';
+  const selectedCategory = searchParams.get('category') as 'women' | 'girls' | 'babies' | null;
+
+  // Fetch products based on category selection
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setLoading(true);
+      try {
+        let fetchedProducts: EnhancedProduct[] = [];
+        
+        if (selectedCategory) {
+          // Fetch products for specific category
+          fetchedProducts = await fetchProductsByCategory(selectedCategory);
+        } else {
+          // Fetch all products for shop page
+          fetchedProducts = await fetchAllProducts();
+        }
+        
+        setProducts(fetchedProducts);
+      } catch (error) {
+        console.error('Error fetching products:', error);
+        setProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, [selectedCategory]);
 
   const filteredProducts = useMemo(() => {
     let result = [...products];
-
-    // Filter by category
-    if (selectedCategory) {
-      result = result.filter((p) => p.category === selectedCategory);
-    }
-
-    // Filter by subcategory
-    if (selectedSubcategory) {
-      result = result.filter((p) => p.subcategory === selectedSubcategory);
-    }
 
     // Filter by price range
     result = result.filter(
       (p) => p.price >= priceRange[0] && p.price <= priceRange[1]
     );
 
-    // Sort
+    // Sort products
     switch (sortBy) {
       case 'price-low':
         result.sort((a, b) => a.price - b.price);
@@ -62,32 +81,28 @@ const ShopPage = () => {
         result.sort((a, b) => b.rating - a.rating);
         break;
       case 'newest':
-        result = result.filter((p) => p.isNew).concat(result.filter((p) => !p.isNew));
+        result.sort((a, b) => {
+          const dateA = new Date(a.created_at || '').getTime();
+          const dateB = new Date(b.created_at || '').getTime();
+          return dateB - dateA;
+        });
+        break;
+      case 'name':
+        result.sort((a, b) => a.name.localeCompare(b.name));
         break;
       default:
-        // Featured - bestsellers first
-        result = result.filter((p) => p.isBestSeller).concat(result.filter((p) => !p.isBestSeller));
+        // Featured - keep original order or sort by availability
+        result = result.filter((p) => p.inStock).concat(result.filter((p) => !p.inStock));
     }
 
     return result;
-  }, [selectedCategory, selectedSubcategory, priceRange, sortBy]);
+  }, [products, priceRange, sortBy]);
 
   const handleCategoryChange = (category: string) => {
     if (category === selectedCategory) {
       searchParams.delete('category');
-      searchParams.delete('subcategory');
     } else {
       searchParams.set('category', category);
-      searchParams.delete('subcategory');
-    }
-    setSearchParams(searchParams);
-  };
-
-  const handleSubcategoryChange = (subcategory: string) => {
-    if (subcategory === selectedSubcategory) {
-      searchParams.delete('subcategory');
-    } else {
-      searchParams.set('subcategory', subcategory);
     }
     setSearchParams(searchParams);
   };
@@ -98,9 +113,15 @@ const ShopPage = () => {
     setSortBy('featured');
   };
 
+  // Categories for filtering
+  const categories = [
+    { id: 'women', name: 'Women', description: 'Elegant sarees & traditional wear' },
+    { id: 'girls', name: 'Girls', description: 'Stylish outfits for young ladies' },
+    { id: 'babies', name: 'Babies', description: 'Adorable clothing for little ones' }
+  ];
+
   const activeFiltersCount =
     (selectedCategory ? 1 : 0) +
-    (selectedSubcategory ? 1 : 0) +
     (priceRange[0] > 0 || priceRange[1] < 30000 ? 1 : 0);
 
   const FilterContent = () => (
@@ -127,27 +148,6 @@ const ShopPage = () => {
         </div>
       </div>
 
-      {/* Subcategories */}
-      {selectedCategory && subcategories[selectedCategory as keyof typeof subcategories] && (
-        <div>
-          <h3 className="font-serif text-lg font-medium mb-4">Type</h3>
-          <div className="space-y-3">
-            {subcategories[selectedCategory as keyof typeof subcategories].map((sub) => (
-              <div key={sub} className="flex items-center gap-3">
-                <Checkbox
-                  id={sub}
-                  checked={selectedSubcategory === sub}
-                  onCheckedChange={() => handleSubcategoryChange(sub)}
-                />
-                <label htmlFor={sub} className="font-sans text-sm cursor-pointer">
-                  {sub}
-                </label>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Price Range */}
       <div>
         <h3 className="font-serif text-lg font-medium mb-4">Price Range</h3>
@@ -168,8 +168,12 @@ const ShopPage = () => {
       </div>
 
       {/* Clear Filters */}
-      {activeFiltersCount > 0 && (
-        <Button variant="outline" onClick={clearFilters} className="w-full">
+      {(selectedCategory || priceRange[0] > 0 || priceRange[1] < 30000) && (
+        <Button
+          variant="outline"
+          onClick={clearFilters}
+          className="w-full"
+        >
           Clear All Filters
         </Button>
       )}
@@ -208,15 +212,6 @@ const ShopPage = () => {
                   <X size={14} />
                 </button>
               )}
-              {selectedSubcategory && (
-                <button
-                  onClick={() => handleSubcategoryChange(selectedSubcategory)}
-                  className="inline-flex items-center gap-1 bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-sans"
-                >
-                  {selectedSubcategory}
-                  <X size={14} />
-                </button>
-              )}
               {(priceRange[0] > 0 || priceRange[1] < 30000) && (
                 <button
                   onClick={() => setPriceRange([0, 30000])}
@@ -226,6 +221,14 @@ const ShopPage = () => {
                   <X size={14} />
                 </button>
               )}
+              <Button
+                onClick={clearFilters}
+                variant="outline"
+                size="sm"
+                className="ml-2"
+              >
+                Clear All
+              </Button>
             </div>
           )}
 
@@ -267,6 +270,7 @@ const ShopPage = () => {
                 <SelectContent>
                   <SelectItem value="featured">Featured</SelectItem>
                   <SelectItem value="newest">Newest</SelectItem>
+                  <SelectItem value="name">Name A-Z</SelectItem>
                   <SelectItem value="price-low">Price: Low to High</SelectItem>
                   <SelectItem value="price-high">Price: High to Low</SelectItem>
                   <SelectItem value="rating">Highest Rated</SelectItem>
@@ -300,25 +304,43 @@ const ShopPage = () => {
 
             {/* Products Grid */}
             <div className="flex-1">
-              {filteredProducts.length === 0 ? (
+              {loading ? (
+                <div className="flex justify-center items-center py-16">
+                  <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="text-muted-foreground font-sans">Loading products...</p>
+                  </div>
+                </div>
+              ) : filteredProducts.length === 0 ? (
                 <div className="text-center py-16">
                   <h3 className="font-serif text-xl mb-2">No products found</h3>
                   <p className="text-muted-foreground font-sans mb-4">
-                    Try adjusting your filters to find what you're looking for.
+                    {selectedCategory 
+                      ? `No products available in the ${selectedCategory} category. Try adjusting your filters.`
+                      : 'Try adjusting your filters to find what you\'re looking for.'
+                    }
                   </p>
                   <Button onClick={clearFilters}>Clear Filters</Button>
                 </div>
               ) : (
-                <div
-                  className={
-                    viewMode === 'grid'
-                      ? 'grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6'
-                      : 'space-y-6'
-                  }
-                >
-                  {filteredProducts.map((product) => (
-                    <ProductCard key={product.id} product={product} />
-                  ))}
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <p className="text-muted-foreground font-sans text-sm">
+                      Showing {filteredProducts.length} product{filteredProducts.length !== 1 ? 's' : ''}
+                      {selectedCategory && ` in ${selectedCategory} category`}
+                    </p>
+                  </div>
+                  <div
+                    className={
+                      viewMode === 'grid'
+                        ? 'grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6'
+                        : 'space-y-6'
+                    }
+                  >
+                    {filteredProducts.map((product) => (
+                      <ProductCard key={product.id} product={product} />
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

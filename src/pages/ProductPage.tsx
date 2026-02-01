@@ -1,30 +1,66 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Star, Minus, Plus, Heart, Share2, Truck, RefreshCw, Shield, ChevronLeft } from 'lucide-react';
+import { Star, Minus, Plus, Heart, Share2, Truck, RefreshCw, Shield, ChevronLeft, Loader2 } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
 import ProductCard from '@/components/ProductCard';
 import { Button } from '@/components/ui/button';
-import { getProductById, products } from '@/data/products';
+import { useProduct } from '@/hooks/useProducts';
+import { fetchProductsByCategory, EnhancedProduct } from '@/services/productService';
 import { useCart } from '@/context/CartContext';
 import { toast } from 'sonner';
 
 const ProductPage = () => {
   const { id } = useParams<{ id: string }>();
-  const product = getProductById(id || '');
+  const { product, loading: productLoading, error } = useProduct(id || null);
   const { addItem } = useCart();
 
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
   const [quantity, setQuantity] = useState(1);
+  const [relatedProducts, setRelatedProducts] = useState<EnhancedProduct[]>([]);
+  const [relatedLoading, setRelatedLoading] = useState(false);
 
-  if (!product) {
+  // Fetch related products when product loads
+  useEffect(() => {
+    if (!product) return;
+
+    const fetchRelated = async () => {
+      setRelatedLoading(true);
+      try {
+        const allCategoryProducts = await fetchProductsByCategory(product.category);
+        const filtered = allCategoryProducts.filter((p) => p.id !== product.id).slice(0, 4);
+        setRelatedProducts(filtered);
+      } catch (error) {
+        console.error('Error fetching related products:', error);
+      } finally {
+        setRelatedLoading(false);
+      }
+    };
+
+    fetchRelated();
+  }, [product]);
+
+  if (productLoading) {
+    return (
+      <MainLayout>
+        <div className="container mx-auto px-4 py-20 text-center">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-muted-foreground font-sans">Loading product...</p>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (error || !product) {
     return (
       <MainLayout>
         <div className="container mx-auto px-4 py-20 text-center">
           <h1 className="font-serif text-3xl mb-4">Product Not Found</h1>
           <p className="text-muted-foreground font-sans mb-6">
-            The product you're looking for doesn't exist.
+            {error || "The product you're looking for doesn't exist."}
           </p>
           <Button asChild>
             <Link to="/shop">Continue Shopping</Link>
@@ -34,13 +70,9 @@ const ProductPage = () => {
     );
   }
 
-  const discount = product.originalPrice
-    ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+  const discount = product.cost && product.cost !== product.price
+    ? Math.round(((product.cost - product.price) / product.cost) * 100)
     : 0;
-
-  const relatedProducts = products
-    .filter((p) => p.category === product.category && p.id !== product.id)
-    .slice(0, 4);
 
   const handleAddToCart = () => {
     if (!selectedSize) {
@@ -117,16 +149,15 @@ const ProductPage = () => {
 
           {/* Info */}
           <div className="space-y-6">
-            {/* Badges */}
+            {/* Stock Status */}
             <div className="flex items-center gap-2">
-              {product.isNew && (
-                <span className="bg-accent text-accent-foreground text-xs font-sans font-semibold px-3 py-1 rounded-full">
-                  NEW ARRIVAL
+              {product.inStock ? (
+                <span className="bg-green-100 text-green-700 text-xs font-sans font-semibold px-3 py-1 rounded-full">
+                  IN STOCK
                 </span>
-              )}
-              {product.isBestSeller && (
-                <span className="gradient-gold text-white text-xs font-sans font-semibold px-3 py-1 rounded-full">
-                  BESTSELLER
+              ) : (
+                <span className="bg-red-100 text-red-700 text-xs font-sans font-semibold px-3 py-1 rounded-full">
+                  OUT OF STOCK
                 </span>
               )}
             </div>
@@ -164,10 +195,10 @@ const ProductPage = () => {
               <span className="font-sans text-3xl font-semibold">
                 ₹{product.price.toLocaleString()}
               </span>
-              {product.originalPrice && (
+              {discount > 0 && (
                 <>
-                  <span className="text-xl text-muted-foreground line-through font-sans">
-                    ₹{product.originalPrice.toLocaleString()}
+                  <span className="text-lg text-muted-foreground line-through font-sans">
+                    ₹{product.cost.toLocaleString()}
                   </span>
                   <span className="bg-secondary text-secondary-foreground text-sm font-sans font-semibold px-3 py-1 rounded-full">
                     {discount}% OFF
@@ -181,11 +212,11 @@ const ProductPage = () => {
               {product.description}
             </p>
 
-            {/* Fabric */}
-            {product.fabric && (
+            {/* Material */}
+            {product.material && (
               <p className="text-sm font-sans">
-                <span className="text-muted-foreground">Fabric:</span>{' '}
-                <span className="font-medium">{product.fabric}</span>
+                <span className="text-muted-foreground">Material:</span>{' '}
+                <span className="font-medium">{product.material}</span>
               </p>
             )}
 
@@ -298,11 +329,20 @@ const ProductPage = () => {
             <h2 className="font-serif text-2xl md:text-3xl font-semibold mb-8">
               You May Also Like
             </h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {relatedProducts.map((p) => (
-                <ProductCard key={p.id} product={p} />
-              ))}
-            </div>
+            {relatedLoading ? (
+              <div className="flex justify-center items-center py-16">
+                <div className="flex flex-col items-center gap-4">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  <p className="text-muted-foreground font-sans text-sm">Loading related products...</p>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                {relatedProducts.map((p) => (
+                  <ProductCard key={p.id} product={p} />
+                ))}
+              </div>
+            )}
           </section>
         )}
       </div>

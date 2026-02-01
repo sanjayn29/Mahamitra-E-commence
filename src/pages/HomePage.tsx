@@ -1,13 +1,72 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Sparkles, Truck, RefreshCw, Shield } from 'lucide-react';
+import { ArrowRight, Sparkles, Truck, RefreshCw, Shield, Loader2 } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
 import ProductCard from '@/components/ProductCard';
 import { Button } from '@/components/ui/button';
-import { getBestSellers, getNewArrivals, categories } from '@/data/products';
+import { fetchAllProducts, getCategoriesWithCounts, EnhancedProduct } from '@/services/productService';
 
 const HomePage = () => {
-  const bestSellers = getBestSellers();
-  const newArrivals = getNewArrivals();
+  const [featuredProducts, setFeaturedProducts] = useState<EnhancedProduct[]>([]);
+  const [newProducts, setNewProducts] = useState<EnhancedProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [categoryCounts, setCategoryCounts] = useState({
+    women: { count: 0 },
+    girls: { count: 0 },
+    babies: { count: 0 },
+  });
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [products, counts] = await Promise.all([
+          fetchAllProducts(),
+          getCategoriesWithCounts(),
+        ]);
+
+        // Get featured products (random selection for now)
+        const shuffledProducts = [...products].sort(() => 0.5 - Math.random());
+        setFeaturedProducts(shuffledProducts.slice(0, 8));
+
+        // Get newest products (by creation date or recent products)
+        const newestProducts = [...products]
+          .sort((a, b) => {
+            const dateA = new Date(a.created_at || '').getTime();
+            const dateB = new Date(b.created_at || '').getTime();
+            return dateB - dateA;
+          })
+          .slice(0, 8);
+        setNewProducts(newestProducts);
+
+        setCategoryCounts(counts);
+      } catch (error) {
+        console.error('Error fetching homepage data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const categories = [
+    { 
+      id: 'women', 
+      name: 'Women Collection', 
+      description: `Elegant sarees & traditional wear (${categoryCounts.women.count} items)` 
+    },
+    { 
+      id: 'girls', 
+      name: 'Girls Collection', 
+      description: `Stylish outfits for young ladies (${categoryCounts.girls.count} items)` 
+    },
+    { 
+      id: 'babies', 
+      name: 'Baby Collection', 
+      description: `Adorable clothing for little ones (${categoryCounts.babies.count} items)` 
+    }
+  ];
 
   return (
     <MainLayout>
@@ -104,16 +163,16 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Best Sellers Section */}
+      {/* Featured Products Section */}
       <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12">
             <div>
               <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-2">
-                Best Sellers
+                Featured Products
               </h2>
               <p className="text-muted-foreground font-sans">
-                Our most loved pieces by customers
+                Handpicked items from our collection
               </p>
             </div>
             <Button asChild variant="outline" className="mt-4 md:mt-0">
@@ -124,11 +183,20 @@ const HomePage = () => {
             </Button>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {bestSellers.slice(0, 4).map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
+          {loading ? (
+            <div className="flex justify-center items-center py-16">
+              <div className="flex flex-col items-center gap-4">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-muted-foreground font-sans">Loading products...</p>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {featuredProducts.slice(0, 4).map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -173,11 +241,20 @@ const HomePage = () => {
             </Button>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {newArrivals.slice(0, 4).map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
+          {loading ? (
+            <div className="flex justify-center items-center py-16">
+              <div className="flex flex-col items-center gap-4">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-muted-foreground font-sans">Loading new arrivals...</p>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {newProducts.slice(0, 4).map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
