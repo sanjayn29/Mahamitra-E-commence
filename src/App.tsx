@@ -21,6 +21,7 @@ import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
 import AdminLoginPage from "./pages/admin/AdminLoginPage";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import AddProductPage from "./pages/admin/AddProductPage";
+import InventoryManagement from "./pages/admin/InventoryManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -50,6 +51,7 @@ const App = () => (
               <Route element={<ProtectedAdminRoute />}>
                 <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
                 <Route path="/admin/add-product" element={<AddProductPage />} />
+                <Route path="/admin/inventory" element={<InventoryManagement />} />
               </Route>
               <Route path="*" element={<NotFound />} />
               </Routes>
