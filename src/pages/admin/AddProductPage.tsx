@@ -25,8 +25,7 @@ const AddProductPage = () => {
     description: '',
     status: 'available',
     sizes: '',
-    colors: '',
-    image: ''
+    colors: ''
   });
 
   const categories = [
@@ -130,8 +129,7 @@ const AddProductPage = () => {
         description: '',
         status: 'available',
         sizes: '',
-        colors: '',
-        image: ''
+        colors: ''
       });
       setImageFile(null);
       setImagePreview('');
@@ -343,23 +341,6 @@ const AddProductPage = () => {
                     <SelectItem value="out-of-stock">Out of Stock</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-
-              {/* Image URL */}
-              <div className="space-y-2">
-                <Label htmlFor="image">Product Image URL</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="image"
-                    value={formData.image}
-                    onChange={(e) => handleInputChange('image', e.target.value)}
-                    placeholder="https://example.com/image.jpg"
-                    className="flex-1"
-                  />
-                  <Button type="button" variant="outline" size="icon">
-                    <Upload size={16} />
-                  </Button>
-                </div>
               </div>
 
               {/* Description */}
