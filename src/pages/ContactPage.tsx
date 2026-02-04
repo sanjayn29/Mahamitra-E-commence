@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import emailjs from 'emailjs-com';
 
 const ContactPage = () => {
   const [formData, setFormData] = useState({
@@ -15,6 +16,7 @@ const ContactPage = () => {
     subject: '',
     message: '',
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -22,12 +24,58 @@ const ContactPage = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success('Message sent successfully!', {
-      description: "We'll get back to you within 24 hours.",
-    });
-    setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
+    setIsSubmitting(true);
+
+    // EmailJS Configuration for Mahamitra Ecommerce
+    const serviceId = 'service_a0m592k';
+    const adminTemplateId = 'template_tad9tyj'; // Contact Us Template
+    const userTemplateId = 'template_fxajsfq'; // Welcome Template
+    const publicKey = 'otpRPlxO39dpVAhXz';
+
+    try {
+      // Send notification to admin
+      await emailjs.send(
+        serviceId,
+        adminTemplateId,
+        {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          subject: formData.subject,
+          message: formData.message,
+          from_email: 'support@mahamitra.com',
+          time: new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })
+        },
+        publicKey
+      );
+
+      // Send confirmation to user
+      await emailjs.send(
+        serviceId,
+        userTemplateId,
+        {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          subject: formData.subject,
+          message: formData.message,
+          from_email: 'support@mahamitra.com'
+        },
+        publicKey
+      );
+
+      toast.success('Message sent successfully!', {
+        description: "We'll get back to you within 24 hours.",
+      });
+      setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
+    } catch (error) {
+      console.error('EmailJS Error:', error);
+      toast.error('Failed to send message. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -123,10 +171,20 @@ const ContactPage = () => {
                 <Button
                   type="submit"
                   size="lg"
-                  className="w-full gradient-primary text-primary-foreground"
+                  disabled={isSubmitting}
+                  className="w-full gradient-primary text-primary-foreground disabled:opacity-50"
                 >
-                  <Send size={18} className="mr-2" />
-                  Send Message
+                  {isSubmitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send size={18} className="mr-2" />
+                      Send Message
+                    </>
+                  )}
                 </Button>
               </form>
             </div>

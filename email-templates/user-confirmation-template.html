@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thank You for Contacting Mahamitra</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      font-family: 'Inter', sans-serif;
+    }
+    
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      background: #ffffff;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e2e8f0;
+    }
+    
+    .header {
+      background: linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #ec4899 100%);
+      padding: 40px 30px;
+      text-align: center;
+      position: relative;
+    }
+    
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 6px;
+      background: linear-gradient(90deg, #f59e0b, #eab308, #84cc16, #22c55e);
+    }
+    
+    .brand-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+    
+    .logo {
+      width: 80px;
+      height: 80px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+    }
+    
+    .brand-text {
+      font-family: 'Playfair Display', serif;
+      color: white;
+      font-weight: 700;
+      font-size: 36px;
+      letter-spacing: -1px;
+    }
+    
+    .tagline {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 16px;
+      letter-spacing: 0.5px;
+      font-weight: 500;
+    }
+    
+    .content {
+      padding: 50px 40px;
+      color: #1f2937;
+    }
+    
+    .greeting {
+      font-size: 32px;
+      font-weight: 700;
+      color: #7c3aed;
+      margin: 0 0 20px;
+      text-align: center;
+    }
+    
+    .welcome-message {
+      font-size: 18px;
+      line-height: 1.6;
+      color: #4b5563;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    .highlight {
+      color: #7c3aed;
+      font-weight: 600;
+    }
+    
+    .message-summary {
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      border: 2px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 24px;
+      margin: 30px 0;
+      position: relative;
+    }
+    
+    .message-summary::before {
+      content: '💬';
+      position: absolute;
+      top: -12px;
+      left: 24px;
+      background: white;
+      padding: 0 8px;
+      font-size: 20px;
+    }
+    
+    .summary-header {
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 12px;
+      font-size: 16px;
+    }
+    
+    .summary-content {
+      font-style: italic;
+      color: #6b7280;
+      line-height: 1.6;
+      padding: 12px;
+      background: white;
+      border-radius: 8px;
+      border-left: 4px solid #7c3aed;
+    }
+    
+    .response-info {
+      background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+      border: 1px solid #bbf7d0;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 30px 0;
+      text-align: center;
+    }
+    
+    .response-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    
+    .response-text {
+      font-size: 18px;
+      color: #065f46;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    
+    .response-subtext {
+      font-size: 14px;
+      color: #047857;
+    }
+    
+    .features {
+      margin: 40px 0;
+      text-align: center;
+    }
+    
+    .features h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 24px;
+      color: #1f2937;
+      margin-bottom: 20px;
+    }
+    
+    .feature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 24px 0;
+    }
+    
+    .feature-item {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      text-align: center;
+      transition: transform 0.2s;
+    }
+    
+    .feature-item:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    }
+    
+    .feature-icon {
+      font-size: 32px;
+      margin-bottom: 12px;
+    }
+    
+    .feature-title {
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 8px;
+    }
+    
+    .feature-desc {
+      font-size: 14px;
+      color: #6b7280;
+    }
+    
+    .cta-section {
+      background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+      padding: 32px;
+      border-radius: 16px;
+      text-align: center;
+      color: white;
+      margin: 30px 0;
+    }
+    
+    .cta-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    
+    .cta-button {
+      display: inline-block;
+      background: white;
+      color: #7c3aed;
+      text-decoration: none;
+      padding: 14px 28px;
+      border-radius: 8px;
+      font-weight: 600;
+      margin-top: 16px;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .cta-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+    }
+    
+    .footer {
+      background: #f8fafc;
+      padding: 32px;
+      text-align: center;
+      border-top: 1px solid #e5e7eb;
+    }
+    
+    .social-links {
+      margin: 20px 0;
+    }
+    
+    .social-link {
+      display: inline-block;
+      margin: 0 12px;
+      text-decoration: none;
+      color: #7c3aed;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    
+    .social-link:hover {
+      text-decoration: underline;
+    }
+    
+    .contact-details {
+      margin: 24px 0;
+      font-size: 14px;
+      color: #6b7280;
+    }
+    
+    .contact-details strong {
+      color: #374151;
+    }
+    
+    /* Mobile Responsive */
+    @media (max-width: 600px) {
+      .container {
+        margin: 20px 10px;
+        border-radius: 16px;
+      }
+      
+      .header {
+        padding: 24px 20px;
+      }
+      
+      .brand-container {
+        flex-direction: column;
+        gap: 12px;
+      }
+      
+      .brand-text {
+        font-size: 28px;
+      }
+      
+      .content {
+        padding: 32px 20px;
+      }
+      
+      .greeting {
+        font-size: 24px;
+      }
+      
+      .feature-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .social-link {
+        display: block;
+        margin: 8px 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="brand-container">
+        <div class="logo">✨</div>
+        <div class="brand-text">MAHAMITRA</div>
+      </div>
+      <div class="tagline">Premium Fashion Destination</div>
+    </div>
+    
+    <div class="content">
+      <h1 class="greeting">Hello {{name}}! 👋</h1>
+      
+      <p class="welcome-message">
+        Thank you for reaching out to <span class="highlight">Mahamitra</span>! 
+        We've received your message and we're excited to assist you with your fashion needs.
+      </p>
+      
+      <div class="message-summary">
+        <div class="summary-header">Your Message:</div>
+        <div class="summary-content">
+          "{{message}}"
+        </div>
+      </div>
+      
+      <div class="response-info">
+        <div class="response-icon">⚡</div>
+        <div class="response-text">We'll respond within 24 hours</div>
+        <div class="response-subtext">Our fashion experts are reviewing your inquiry</div>
+      </div>
+      
+      <div class="features">
+        <h3>Why Choose Mahamitra?</h3>
+        <div class="feature-grid">
+          <div class="feature-item">
+            <div class="feature-icon">🚚</div>
+            <div class="feature-title">Free Shipping</div>
+            <div class="feature-desc">On orders above ₹2,999</div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-icon">↩️</div>
+            <div class="feature-title">Easy Returns</div>
+            <div class="feature-desc">7-day hassle-free returns</div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-icon">💳</div>
+            <div class="feature-title">COD Available</div>
+            <div class="feature-desc">Cash on delivery across India</div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-icon">⭐</div>
+            <div class="feature-title">Premium Quality</div>
+            <div class="feature-desc">Curated fashion collection</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="cta-section">
+        <div class="cta-title">Explore Our Latest Collection</div>
+        <p>Discover premium fashion that defines your style</p>
+        <a href="#" class="cta-button">Shop Now</a>
+      </div>
+    </div>
+    
+    <div class="footer">
+      <div class="contact-details">
+        <strong>Contact Information:</strong><br>
+        📧 Email: {{email}} | 📱 Phone: {{phone}}<br>
+        🏢 Subject: {{subject}}
+      </div>
+      
+      <div class="social-links">
+        <a href="#" class="social-link">Instagram</a>
+        <a href="#" class="social-link">Facebook</a>
+        <a href="#" class="social-link">WhatsApp</a>
+      </div>
+      
+      <p style="margin: 20px 0 0; color: #6b7280; font-size: 12px;">
+        <strong>Mahamitra Ecommerce</strong> - Premium Fashion Destination<br>
+        📍 123 Fashion Street, Silk Market, Mumbai, Maharashtra 400001<br>
+        © 2026 Mahamitra • All rights reserved
+      </p>
+    </div>
+  </div>
+</body>
+</html>
