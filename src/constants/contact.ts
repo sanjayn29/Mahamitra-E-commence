@@ -25,8 +25,8 @@ export const CONTACT_INFO = {
     display: '+91 95008 44405',
   },
   email: {
-    primary: 'hello@mahamitra.com',
-    support: 'support@mahamitra.com',
+    primary: 'mahamitrafashions@gmail.com',
+    support: 'mahamitrafashions@gmail.com',
   },
   social: {
     instagram: {

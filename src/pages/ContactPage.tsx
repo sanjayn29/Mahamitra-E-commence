@@ -46,7 +46,7 @@ const ContactPage = () => {
           phone: formData.phone,
           subject: formData.subject,
           message: formData.message,
-          from_email: 'support@mahamitra.com',
+          from_email: CONTACT_INFO.email.primary,
           time: new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })
         },
         publicKey
@@ -62,7 +62,7 @@ const ContactPage = () => {
           phone: formData.phone,
           subject: formData.subject,
           message: formData.message,
-          from_email: 'support@mahamitra.com'
+          from_email: CONTACT_INFO.email.primary
         },
         publicKey
       );
@@ -230,8 +230,8 @@ const ContactPage = () => {
                   </div>
                   <h3 className="font-serif text-lg font-medium mb-2">Email Us</h3>
                   <p className="text-muted-foreground font-sans text-sm">
-                    hello@mahamitra.com<br />
-                    support@mahamitra.com
+                    {CONTACT_INFO.email.primary}<br />
+                    {CONTACT_INFO.email.support}
                   </p>
                 </div>
 
