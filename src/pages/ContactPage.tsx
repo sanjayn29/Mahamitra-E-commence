@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import emailjs from 'emailjs-com';
+import { CONTACT_INFO } from '@/constants/contact';
 
 const ContactPage = () => {
   const [formData, setFormData] = useState({
@@ -86,10 +87,14 @@ const ContactPage = () => {
           <h1 className="font-serif text-4xl md:text-5xl font-semibold mb-4">
             Get in Touch
           </h1>
-          <p className="text-muted-foreground font-sans max-w-2xl mx-auto">
+          <p className="text-muted-foreground font-sans max-w-2xl mx-auto mb-6">
             Have a question about our products or want to share feedback?
             We'd love to hear from you!
           </p>
+          <div className="bg-card/50 backdrop-blur-sm rounded-lg px-4 py-3 inline-flex items-center gap-2 border border-border/50">
+            <span className="text-sm font-medium">GSTIN:</span>
+            <span className="text-primary font-mono text-sm font-semibold">{CONTACT_INFO.company.gstin}</span>
+          </div>
         </div>
       </section>
 
@@ -136,7 +141,7 @@ const ContactPage = () => {
                       name="phone"
                       value={formData.phone}
                       onChange={handleInputChange}
-                      placeholder="+91 98765 43210"
+                      placeholder={CONTACT_INFO.phone.display}
                       className="mt-1"
                     />
                   </div>
@@ -199,8 +204,12 @@ const ContactPage = () => {
                   </div>
                   <h3 className="font-serif text-lg font-medium mb-2">Visit Us</h3>
                   <p className="text-muted-foreground font-sans text-sm">
-                    123 Fashion Street, Silk Market,<br />
-                    Mumbai, Maharashtra 400001
+                    210F, 1st Floor, Bharathiar Road,<br />
+                    New Sidhapudur, Coimbatore – 641044,<br />
+                    Tamil Nadu
+                  </p>
+                  <p className="text-muted-foreground font-sans text-xs mt-2">
+                    <strong>GSTIN:</strong> 33AQWPR5424R1ZT
                   </p>
                 </div>
 
@@ -210,8 +219,8 @@ const ContactPage = () => {
                   </div>
                   <h3 className="font-serif text-lg font-medium mb-2">Call Us</h3>
                   <p className="text-muted-foreground font-sans text-sm">
-                    +91 98765 43210<br />
-                    +91 98765 43211
+                    +91 95008 44405<br />
+                    <span className="text-xs">Ms. Ramya, Managing Partner</span>
                   </p>
                 </div>
 
@@ -243,7 +252,9 @@ const ContactPage = () => {
                 <h3 className="font-serif text-lg font-medium mb-4">Connect With Us</h3>
                 <div className="flex gap-4">
                   <a
-                    href="#"
+                    href={CONTACT_INFO.social.instagram.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="w-12 h-12 bg-card rounded-full flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors shadow"
                   >
                     <Instagram size={24} />
@@ -266,14 +277,18 @@ const ContactPage = () => {
                 </p>
               </div>
 
-              {/* Map Placeholder */}
-              <div className="bg-muted rounded-xl h-64 flex items-center justify-center">
-                <div className="text-center">
-                  <MapPin size={48} className="mx-auto text-muted-foreground mb-2" />
-                  <p className="text-muted-foreground font-sans text-sm">
-                    Map integration would go here
-                  </p>
-                </div>
+              {/* Google Maps */}
+              <div className="bg-muted rounded-xl h-64 overflow-hidden">
+                <iframe
+                  src={CONTACT_INFO.maps.embedUrl}
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title="Mahamitra Location - Bharathiar Road, Coimbatore"
+                ></iframe>
               </div>
             </div>
           </div>

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Instagram, Facebook, Twitter, Mail, Phone, MapPin } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { CONTACT_INFO } from '@/constants/contact';
 
 const Footer = () => {
   return (
@@ -47,7 +48,7 @@ const Footer = () => {
                 From traditional sarees to contemporary designs, we bring you the finest apparel.
               </p>
               <div className="flex gap-4">
-                <a href="#" className="text-background/70 hover:text-primary transition-colors">
+                <a href={CONTACT_INFO.social.instagram.url} target="_blank" rel="noopener noreferrer" className="text-background/70 hover:text-primary transition-colors">
                   <Instagram size={20} />
                 </a>
                 <a href="#" className="text-background/70 hover:text-primary transition-colors">
@@ -136,13 +137,14 @@ const Footer = () => {
                 <li className="flex items-start gap-3">
                   <MapPin size={18} className="text-primary mt-0.5 flex-shrink-0" />
                   <span className="text-background/70">
-                    123 Fashion Street, Silk Market,<br />
-                    Mumbai, Maharashtra 400001
+                    210F, 1st Floor, Bharathiar Road,<br />
+                    New Sidhapudur, Coimbatore – 641044,<br />
+                    Tamil Nadu
                   </span>
                 </li>
                 <li className="flex items-center gap-3">
                   <Phone size={18} className="text-primary flex-shrink-0" />
-                  <span className="text-background/70">+91 98765 43210</span>
+                  <span className="text-background/70">+91 95008 44405</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <Mail size={18} className="text-primary flex-shrink-0" />

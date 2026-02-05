@@ -39,11 +39,11 @@ const AboutPage = () => {
               <p className="text-muted-foreground font-sans leading-relaxed">
                 Mahamitra Boutique was born from a passion to preserve India's rich textile
                 heritage while embracing contemporary fashion. Founded in 2014, we started
-                as a small family-owned boutique in the heart of Mumbai, with a vision to
+                as a small family-owned boutique in the heart of Coimbatore, Tamil Nadu, with a vision to
                 bring the finest handcrafted apparel to women who appreciate quality and elegance.
               </p>
               <p className="text-muted-foreground font-sans leading-relaxed">
-                Today, we've grown into a beloved brand, trusted by thousands of customers
+                Under the leadership of Ms. Ramya, our Managing Partner, we've grown into a beloved brand, trusted by thousands of customers
                 across the country. But our core values remain unchanged – quality craftsmanship,
                 ethical sourcing, and a commitment to celebrating every woman's unique beauty.
               </p>
