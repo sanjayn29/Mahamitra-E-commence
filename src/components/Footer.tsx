@@ -7,27 +7,7 @@ import { CONTACT_INFO } from '@/constants/contact';
 const Footer = () => {
   return (
     <footer className="bg-foreground text-background">
-      {/* Newsletter Section */}
-      <div className="bg-primary/10 py-12">
-        <div className="container mx-auto px-4 text-center">
-          <h3 className="font-serif text-2xl md:text-3xl text-foreground mb-2">
-            Join the Mahamitra Family
-          </h3>
-          <p className="text-muted-foreground mb-6 font-sans">
-            Subscribe to receive exclusive offers, style tips, and new arrivals
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-            <Input
-              type="email"
-              placeholder="Enter your email"
-              className="bg-background border-border"
-            />
-            <Button className="gradient-primary text-primary-foreground hover:opacity-90 transition-opacity">
-              Subscribe
-            </Button>
-          </div>
-        </div>
-      </div>
+      
 
       {/* Main Footer */}
       <div className="py-12">
@@ -105,26 +85,8 @@ const Footer = () => {
                     Contact Us
                   </Link>
                 </li>
-                <li>
-                  <a href="#" className="text-background/70 hover:text-primary transition-colors">
-                    Shipping Policy
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-background/70 hover:text-primary transition-colors">
-                    Returns & Exchanges
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-background/70 hover:text-primary transition-colors">
-                    Size Guide
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-background/70 hover:text-primary transition-colors">
-                    FAQ
-                  </a>
-                </li>
+                
+                
               </ul>
             </div>
 
@@ -160,11 +122,8 @@ const Footer = () => {
       <div className="border-t border-background/10 py-6">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm font-sans text-background/60">
-            <p>© 2024 Mahamitra Boutique. All rights reserved.</p>
-            <div className="flex gap-6">
-              <a href="#" className="hover:text-primary transition-colors">Privacy Policy</a>
-              <a href="#" className="hover:text-primary transition-colors">Terms of Service</a>
-            </div>
+            <p>© 2026 Mahamitra Boutique. All rights reserved.</p>
+            
           </div>
         </div>
       </div>

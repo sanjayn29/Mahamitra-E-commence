@@ -160,10 +160,10 @@ const AboutPage = () => {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             {[
-              { number: '50,000+', label: 'Happy Customers' },
+              { number: '10,000+', label: 'Happy Customers' },
               { number: '500+', label: 'Unique Designs' },
-              { number: '100+', label: 'Artisan Partners' },
-              { number: '25', label: 'Cities Served' },
+              { number: '10+', label: 'Artisan Partners' },
+              { number: '25+', label: 'Cities Served' },
             ].map((stat, index) => (
               <div key={index}>
                 <p className="font-serif text-3xl md:text-4xl font-semibold text-primary">
