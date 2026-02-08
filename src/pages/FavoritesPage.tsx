@@ -148,35 +148,32 @@ const FavoritesPage = () => {
               return (
                 <Card key={favorite.id} className="group hover:shadow-lg transition-shadow duration-300">
                   <CardContent className="p-0">
-                    {/* Product Image */}
-                    <div className="relative aspect-[3/4] bg-muted rounded-t-lg overflow-hidden">
-                      <img
-                        src={product?.image || '/placeholder-image.jpg'}
-                        alt={product?.name || 'Product'}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        onError={(e) => {
-                          e.currentTarget.src = '/placeholder-image.jpg';
-                        }}
-                      />
-                      
-                      {/* Favorite Button */}
-                      <div className="absolute top-3 right-3">
-                        <FavoriteButton 
-                          productId={favorite.product_id} 
-                          productType={favorite.product_type as any}
-                          size="sm"
-                          className="bg-white/90 hover:bg-white shadow-sm"
+                    <Link to={`/product/${favorite.product_id}`} className="block">
+                      {/* Product Image */}
+                      <div className="relative aspect-[3/4] bg-muted rounded-t-lg overflow-hidden">
+                        <img
+                          src={product?.image || '/placeholder-image.jpg'}
+                          alt={product?.name || 'Product'}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          onError={(e) => {
+                            e.currentTarget.src = '/placeholder-image.jpg';
+                          }}
                         />
+                        
+                        {/* Favorite Button */}
+                        <div className="absolute top-3 right-3 z-10" onClick={(e) => e.preventDefault()}>
+                          <FavoriteButton 
+                            productId={favorite.product_id} 
+                            productType={favorite.product_type as any}
+                            size="sm"
+                            className="bg-white/90 hover:bg-white shadow-sm"
+                          />
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Product Info */}
-                    <div className="p-4">
-                      <Link 
-                        to={`/product/${favorite.product_id}`}
-                        className="block space-y-2 hover:text-primary transition-colors"
-                      >
-                        <h3 className="font-semibold text-sm line-clamp-2">
+                      {/* Product Info */}
+                      <div className="p-4 space-y-2">
+                        <h3 className="font-semibold text-sm line-clamp-2 group-hover:text-primary transition-colors">
                           {product?.name || 'Loading...'}
                         </h3>
                         
@@ -203,8 +200,8 @@ const FavoritesPage = () => {
                             </span>
                           )}
                         </div>
-                      </Link>
-                    </div>
+                      </div>
+                    </Link>
                   </CardContent>
                 </Card>
               );
