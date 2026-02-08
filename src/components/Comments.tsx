@@ -87,19 +87,24 @@ export const Comments = ({ productId, productType }: CommentsProps) => {
     }).format(date);
   };
 
-  const getInitials = (userId?: string) => {
-    if (!userId) return 'U';
-    return userId.substring(0, 2).toUpperCase();
+  const getInitials = (name?: string, email?: string) => {
+    if (name) {
+      const parts = name.split(' ');
+      if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+      }
+      return name.substring(0, 2).toUpperCase();
+    }
+    if (email) {
+      return email.substring(0, 2).toUpperCase();
+    }
+    return 'U';
   };
 
-  const getDisplayName = (userId?: string) => {
-    if (!userId) return 'Anonymous User';
-    // Generate a consistent display name from user ID
-    const hash = userId.split('').reduce((a, b) => {
-      a = ((a << 5) - a) + b.charCodeAt(0);
-      return a & a;
-    }, 0);
-    return `User${Math.abs(hash) % 1000}`;
+  const getDisplayName = (comment: Comment) => {
+    if (comment.user_name) return comment.user_name;
+    if (comment.user_email) return comment.user_email.split('@')[0];
+    return 'Anonymous User';
   };
 
   if (loading) {
@@ -187,12 +192,12 @@ export const Comments = ({ productId, productType }: CommentsProps) => {
                     <Avatar className="h-8 w-8">
                       <AvatarImage src="" alt="" />
                       <AvatarFallback>
-                        {getInitials(comment.user_id)}
+                        {getInitials(comment.user_name, comment.user_email)}
                       </AvatarFallback>
                     </Avatar>
                     <div>
                       <p className="font-semibold text-sm">
-                        {getDisplayName(comment.user_id)}
+                        {getDisplayName(comment)}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {formatDate(comment.created_at)}

@@ -7,6 +7,8 @@ export interface Comment {
   product_type: 'girls' | 'women' | 'babies';
   comment: string;
   created_at: string;
+  user_email?: string;
+  user_name?: string;
 }
 
 export interface Rating {
@@ -63,7 +65,9 @@ export const commentsService = {
         product_id: productId,
         product_type: productType,
         comment,
-        user_id: user.id
+        user_id: user.id,
+        user_email: user.email,
+        user_name: user.user_metadata?.full_name || user.email?.split('@')[0]
       })
       .select()
       .single();
