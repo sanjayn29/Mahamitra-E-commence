@@ -49,13 +49,12 @@ export const RatingDisplay = ({
   const starSize = size === 'sm' ? 12 : size === 'md' ? 16 : 20;
 
   if (loading) {
-    return (
-      <div className="flex items-center gap-1">
-        {[...Array(5)].map((_, i) => (
-          <Star key={i} size={starSize} className="text-muted-foreground animate-pulse" />
-        ))}
-      </div>
-    );
+    return null;
+  }
+
+  // Don't display anything if there are no ratings
+  if (ratingCount === 0) {
+    return null;
   }
 
   return (

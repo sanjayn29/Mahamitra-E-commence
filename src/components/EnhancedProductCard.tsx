@@ -78,6 +78,7 @@ export const EnhancedProductCard: React.FC<EnhancedProductCardProps> = ({
             productId={product.id}
             productType={product.category}
             size="sm"
+            showCount={true}
           />
         </div>
         

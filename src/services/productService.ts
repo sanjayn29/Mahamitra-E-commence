@@ -33,8 +33,6 @@ export interface EnhancedProduct {
   images: string[];
   image: string;
   inStock: boolean;
-  rating: number;
-  reviews: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -92,8 +90,6 @@ export const transformProduct = (dbProduct: any, category?: 'women' | 'girls' | 
     images: [dbProduct.image], // Convert single image to array
     image: dbProduct.image,
     inStock: dbProduct.status === 'available',
-    rating: 4.5, // Default rating - could be enhanced to fetch from ratings table
-    reviews: 0,  // Default reviews count - could be enhanced
     created_at: dbProduct.created_at,
     updated_at: dbProduct.updated_at
   };

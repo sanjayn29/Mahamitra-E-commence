@@ -182,7 +182,7 @@ const FavoritesPage = () => {
                           productId={favorite.product_id}
                           productType={favorite.product_type as any}
                           size="sm"
-                          showCount={false}
+                          showCount={true}
                         />
                         
                         {/* Price */}

@@ -68,11 +68,8 @@ const ProductCard = ({ product }: ProductCardProps) => {
               productId={product.id}
               productType={product.category}
               size="sm"
-              showCount={false}
+              showCount={true}
             />
-            <span className="text-xs text-muted-foreground font-sans">
-              ({product.reviews})
-            </span>
           </div>
 
           {/* Price */}
