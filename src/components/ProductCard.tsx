@@ -3,6 +3,8 @@ import { Star, ShoppingBag } from 'lucide-react';
 import { EnhancedProduct } from '@/services/productService';
 import { useCart } from '@/context/CartContext';
 import { Button } from '@/components/ui/button';
+import { RatingDisplay } from '@/components/Rating';
+import { FavoriteButton } from '@/components/FavoriteButton';
 import { toast } from 'sonner';
 
 interface ProductCardProps {
@@ -24,12 +26,17 @@ const ProductCard = ({ product }: ProductCardProps) => {
       return;
     }
 
-    const firstSize = product.sizes.length > 0 ? product.sizes[0] : 'One Size';
-    const firstColor = product.colors.length > 0 ? product.colors[0] : 'Default';
+    const firstSize = product.sizes && product.sizes.length > 0 ? product.sizes[0] : undefined;
+    const firstColor = product.colors && product.colors.length > 0 ? product.colors[0] : undefined;
     
     addItem(product, 1, firstSize, firstColor);
+    
+    const details = [];
+    if (firstSize) details.push(`Size: ${firstSize}`);
+    if (firstColor) details.push(`Color: ${firstColor}`);
+    
     toast.success(`${product.name} added to cart!`, {
-      description: `Size: ${firstSize} | Color: ${firstColor}`,
+      description: details.length > 0 ? details.join(' | ') : 'Added to cart successfully',
     });
   };
 
@@ -62,6 +69,16 @@ const ProductCard = ({ product }: ProductCardProps) => {
             )}
           </div>
 
+          {/* Favorite Button */}
+          <div className="absolute top-3 right-3">
+            <FavoriteButton 
+              productId={product.id} 
+              productType={product.category}
+              size="sm"
+              className="bg-white/80 hover:bg-white shadow-sm"
+            />
+          </div>
+
           {/* Quick Add Button */}
           <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-foreground/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
             <Button
@@ -86,20 +103,13 @@ const ProductCard = ({ product }: ProductCardProps) => {
           </h3>
 
           {/* Rating */}
-          <div className="flex items-center gap-1 mb-2">
-            <div className="flex">
-              {[...Array(5)].map((_, i) => (
-                <Star
-                  key={i}
-                  size={12}
-                  className={`${
-                    i < Math.floor(product.rating)
-                      ? 'text-accent fill-accent'
-                      : 'text-muted-foreground'
-                  }`}
-                />
-              ))}
-            </div>
+          <div className="mb-2">
+            <RatingDisplay 
+              productId={product.id}
+              productType={product.category}
+              size="sm"
+              showCount={false}
+            />
             <span className="text-xs text-muted-foreground font-sans">
               ({product.reviews})
             </span>

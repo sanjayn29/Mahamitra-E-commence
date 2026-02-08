@@ -4,6 +4,9 @@ import { Star, Minus, Plus, Heart, Share2, Truck, RefreshCw, Shield, ChevronLeft
 import MainLayout from '@/layouts/MainLayout';
 import ProductCard from '@/components/ProductCard';
 import { Button } from '@/components/ui/button';
+import { RatingDisplay, Rating } from '@/components/Rating';
+import { FavoriteButton } from '@/components/FavoriteButton';
+import { Comments } from '@/components/Comments';
 import { useProduct } from '@/hooks/useProducts';
 import { fetchProductsByCategory, EnhancedProduct } from '@/services/productService';
 import { useCart } from '@/context/CartContext';
@@ -75,16 +78,40 @@ const ProductPage = () => {
     : 0;
 
   const handleAddToCart = () => {
-    if (!selectedSize) {
+    // Only require selection if there are multiple options
+    const finalSize = selectedSize || (product.sizes && product.sizes.length > 0 ? product.sizes[0] : 'Free Size');
+    const finalColor = selectedColor || (product.colors && product.colors.length > 0 ? product.colors[0] : 'Default');
+    
+    // Check if size selection is required (more than one option)
+    if (product.sizes && product.sizes.length > 1 && !selectedSize) {
       toast.error('Please select a size');
       return;
     }
-    if (!selectedColor) {
+    
+    // Check if color selection is required (more than one option)  
+    if (product.colors && product.colors.length > 1 && !selectedColor) {
       toast.error('Please select a color');
       return;
     }
-    addItem(product, quantity, selectedSize, selectedColor);
-    toast.success(`${product.name} added to cart!`);
+    
+    console.log('Adding to cart with:', { 
+      product: product.name, 
+      quantity, 
+      size: finalSize, 
+      color: finalColor,
+      productSizes: product.sizes,
+      productColors: product.colors 
+    });
+    
+    try {
+      addItem(product, quantity, finalSize, finalColor);
+      toast.success(`${product.name} added to cart!`, {
+        description: `Size: ${finalSize} | Color: ${finalColor}`
+      });
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      toast.error('Failed to add to cart');
+    }
   };
 
   return (
@@ -172,22 +199,12 @@ const ProductPage = () => {
 
             {/* Rating */}
             <div className="flex items-center gap-3">
-              <div className="flex">
-                {[...Array(5)].map((_, i) => (
-                  <Star
-                    key={i}
-                    size={18}
-                    className={`${
-                      i < Math.floor(product.rating)
-                        ? 'text-accent fill-accent'
-                        : 'text-muted-foreground'
-                    }`}
-                  />
-                ))}
-              </div>
-              <span className="text-sm font-sans text-muted-foreground">
-                {product.rating} ({product.reviews} reviews)
-              </span>
+              <RatingDisplay 
+                productId={product.id}
+                productType={product.category}
+                size="md"
+                showCount={true}
+              />
             </div>
 
             {/* Price */}
@@ -221,44 +238,64 @@ const ProductPage = () => {
             )}
 
             {/* Size Selection */}
-            <div>
-              <h3 className="font-serif text-lg font-medium mb-3">Select Size</h3>
-              <div className="flex flex-wrap gap-3">
-                {product.sizes.map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => setSelectedSize(size)}
-                    className={`min-w-[60px] h-10 px-4 rounded-lg border-2 font-sans text-sm transition-all ${
-                      selectedSize === size
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : 'border-border hover:border-primary'
-                    }`}
-                  >
-                    {size}
-                  </button>
-                ))}
+            {product.sizes && product.sizes.length > 0 && (
+              <div>
+                <h3 className="font-serif text-lg font-medium mb-3">
+                  Select Size {product.sizes.length > 1 ? '*' : ''}
+                </h3>
+                
+                {/* Debug info */}
+                <div className="mb-2 p-2 bg-gray-50 rounded text-xs">
+                  Available sizes: {JSON.stringify(product.sizes)}
+                </div>
+                
+                <div className="flex flex-wrap gap-3">
+                  {product.sizes.map((size) => (
+                    <button
+                      key={size}
+                      onClick={() => setSelectedSize(size)}
+                      className={`min-w-[60px] h-10 px-4 rounded-lg border-2 font-sans text-sm transition-all ${
+                        selectedSize === size
+                          ? 'border-primary bg-primary text-primary-foreground'
+                          : 'border-border hover:border-primary'
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Color Selection */}
-            <div>
-              <h3 className="font-serif text-lg font-medium mb-3">Select Color</h3>
-              <div className="flex flex-wrap gap-3">
-                {product.colors.map((color) => (
-                  <button
-                    key={color}
-                    onClick={() => setSelectedColor(color)}
-                    className={`px-4 py-2 rounded-lg border-2 font-sans text-sm transition-all ${
-                      selectedColor === color
-                        ? 'border-primary bg-primary/10'
-                        : 'border-border hover:border-primary'
-                    }`}
-                  >
-                    {color}
-                  </button>
-                ))}
+            {product.colors && product.colors.length > 0 && (
+              <div>
+                <h3 className="font-serif text-lg font-medium mb-3">
+                  Select Color {product.colors.length > 1 ? '*' : ''}
+                </h3>
+                
+                {/* Debug info */}
+                <div className="mb-2 p-2 bg-gray-50 rounded text-xs">
+                  Available colors: {JSON.stringify(product.colors)}
+                </div>
+                
+                <div className="flex flex-wrap gap-3">
+                  {product.colors.map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => setSelectedColor(color)}
+                      className={`px-4 py-2 rounded-lg border-2 font-sans text-sm transition-all ${
+                        selectedColor === color
+                          ? 'border-primary bg-primary/10'
+                          : 'border-border hover:border-primary'
+                      }`}
+                    >
+                      {color}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Quantity & Add to Cart */}
             <div className="flex flex-col sm:flex-row gap-4">
@@ -289,9 +326,13 @@ const ProductPage = () => {
               </Button>
 
               {/* Wishlist */}
-              <Button variant="outline" size="icon" className="h-12 w-12">
-                <Heart size={20} />
-              </Button>
+              <FavoriteButton 
+                productId={product.id}
+                productType={product.category}
+                size="md"
+                variant="icon"
+                className="h-12 w-12 border"
+              />
 
               {/* Share */}
               <Button variant="outline" size="icon" className="h-12 w-12">
@@ -320,6 +361,27 @@ const ProductPage = () => {
                 <p className="text-xs font-sans text-muted-foreground">Secure Payment</p>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Product Reviews and Comments */}
+        <div className="mt-16 space-y-12">
+          {/* User Rating Section */}
+          <div className="bg-muted/30 rounded-lg p-8">
+            <h3 className="font-serif text-2xl font-semibold mb-6">Rate this Product</h3>
+            <Rating 
+              productId={product.id}
+              productType={product.category}
+              showUserRating={true}
+            />
+          </div>
+
+          {/* Comments Section */}
+          <div>
+            <Comments 
+              productId={product.id}
+              productType={product.category}
+            />
           </div>
         </div>
 

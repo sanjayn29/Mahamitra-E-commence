@@ -114,8 +114,10 @@ const Header = () => {
               <Button variant="ghost" size="icon" className="hidden md:flex">
                 <Search size={20} />
               </Button>
-              <Button variant="ghost" size="icon" className="hidden md:flex">
-                <Heart size={20} />
+              <Button variant="ghost" size="icon" className="hidden md:flex" asChild>
+                <Link to="/favorites" title="Favorites">
+                  <Heart size={20} />
+                </Link>
               </Button>
               
               {/* User Account */}
@@ -142,6 +144,12 @@ const Header = () => {
                     <DropdownMenuItem asChild>
                       <Link to="/profile" className="cursor-pointer">
                         My Profile
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/favorites" className="cursor-pointer">
+                        <Heart size={16} className="mr-2" />
+                        My Favorites
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>

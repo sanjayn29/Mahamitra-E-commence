@@ -1,7 +1,11 @@
-import React, { createContext, useContext, useReducer, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { Product } from '@/data/products';
+import { cartService, CartItem as DatabaseCartItem } from '@/services/userInteractionService';
+import { useAuth } from './AuthContext';
+import { toast } from 'sonner';
 
 export interface CartItem {
+  id?: string;
   product: Product;
   quantity: number;
   size: string;
@@ -11,27 +15,32 @@ export interface CartItem {
 interface CartState {
   items: CartItem[];
   isOpen: boolean;
+  loading: boolean;
 }
 
 type CartAction =
   | { type: 'ADD_ITEM'; payload: CartItem }
-  | { type: 'REMOVE_ITEM'; payload: { productId: string; size: string; color: string } }
-  | { type: 'UPDATE_QUANTITY'; payload: { productId: string; size: string; color: string; quantity: number } }
+  | { type: 'REMOVE_ITEM'; payload: { cartItemId: string } }
+  | { type: 'UPDATE_QUANTITY'; payload: { cartItemId: string; quantity: number } }
+  | { type: 'SET_ITEMS'; payload: CartItem[] }
   | { type: 'CLEAR_CART' }
   | { type: 'TOGGLE_CART' }
-  | { type: 'SET_CART_OPEN'; payload: boolean };
+  | { type: 'SET_CART_OPEN'; payload: boolean }
+  | { type: 'SET_LOADING'; payload: boolean };
 
 interface CartContextType {
   state: CartState;
-  addItem: (product: Product, quantity: number, size: string, color: string) => void;
-  removeItem: (productId: string, size: string, color: string) => void;
-  updateQuantity: (productId: string, size: string, color: string, quantity: number) => void;
-  clearCart: () => void;
+  addItem: (product: Product, quantity: number, size?: string, color?: string) => Promise<void>;
+  addToCart: (productId: string, productType: string, quantity?: number, size?: string, color?: string) => Promise<void>;
+  removeItem: (cartItemId: string) => Promise<void>;
+  updateQuantity: (cartItemId: string, quantity: number) => Promise<void>;
+  clearCart: () => Promise<void>;
   toggleCart: () => void;
   setCartOpen: (isOpen: boolean) => void;
   getCartTotal: () => number;
   getCartCount: () => number;
   getCartSavings: () => number;
+  loadCartItems: () => Promise<void>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -106,23 +115,129 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
   }
 };
 
+const initialState: CartState = {
+  items: [],
+  isOpen: false,
+  loading: false,
+};
+
 export const CartProvider = ({ children }: { children: ReactNode }) => {
-  const [state, dispatch] = useReducer(cartReducer, { items: [], isOpen: false });
+  const [state, dispatch] = useReducer(cartReducer, initialState);
+  const { user } = useAuth();
 
-  const addItem = (product: Product, quantity: number, size: string, color: string) => {
-    dispatch({ type: 'ADD_ITEM', payload: { product, quantity, size, color } });
+  // Load cart items when user logs in
+  useEffect(() => {
+    if (user) {
+      loadCartItems();
+    } else {
+      dispatch({ type: 'CLEAR_CART' });
+    }
+  }, [user]);
+
+  const loadCartItems = async () => {
+    if (!user) return;
+
+    try {
+      dispatch({ type: 'SET_LOADING', payload: true });
+      const cartItems = await cartService.getCartItems();
+      
+      // Transform database cart items to frontend format
+      const transformedItems: CartItem[] = cartItems.map((item: DatabaseCartItem) => ({
+        id: item.id,
+        product: {
+          id: item.product_id,
+          name: 'Loading...', // This would need actual product lookup
+          price: 0,
+          category: item.product_type,
+        } as Product, // You'll need to fetch actual product details
+        quantity: item.quantity,
+        size: item.size || '',
+        color: item.color || '',
+      }));
+
+      dispatch({ type: 'SET_ITEMS', payload: transformedItems });
+    } catch (error) {
+      console.error('Error loading cart items:', error);
+      toast.error('Failed to load cart items');
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
+    }
   };
 
-  const removeItem = (productId: string, size: string, color: string) => {
-    dispatch({ type: 'REMOVE_ITEM', payload: { productId, size, color } });
+  const addItem = async (product: Product, quantity: number, size?: string, color?: string) => {
+    if (!user) {
+      toast.error('Please login to add items to cart');
+      return;
+    }
+
+    try {
+      await cartService.addToCart(product.id, product.category, quantity, size, color);
+      
+      // Add to local state immediately for better UX
+      dispatch({ type: 'ADD_ITEM', payload: { 
+        product, 
+        quantity, 
+        size: size || 'One Size', 
+        color: color || 'Default' 
+      } });
+      
+      // Reload to get the actual database state
+      await loadCartItems();
+      
+      toast.success(`${product.name} added to cart!`);
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      console.log('Product details:', { productId: product.id, category: product.category, quantity, size, color });
+      toast.error('Failed to add item to cart');
+    }
   };
 
-  const updateQuantity = (productId: string, size: string, color: string, quantity: number) => {
-    dispatch({ type: 'UPDATE_QUANTITY', payload: { productId, size, color, quantity } });
+  const removeItem = async (cartItemId: string) => {
+    if (!user || !cartItemId) {
+      console.error('Cannot remove item: no user or invalid cart item ID');
+      return;
+    }
+
+    try {
+      console.log('Removing cart item with ID:', cartItemId);
+      await cartService.removeFromCart(cartItemId);
+      
+      // Update local state
+      dispatch({ type: 'REMOVE_ITEM', payload: { cartItemId } });
+      
+      // Reload to ensure consistency
+      await loadCartItems();
+      
+      toast.success('Item removed from cart');
+    } catch (error) {
+      console.error('Error removing from cart:', error);
+      toast.error('Failed to remove item from cart');
+    }
   };
 
-  const clearCart = () => {
-    dispatch({ type: 'CLEAR_CART' });
+  const updateQuantity = async (cartItemId: string, quantity: number) => {
+    if (!user) return;
+
+    try {
+      await cartService.updateQuantity(cartItemId, quantity);
+      dispatch({ type: 'UPDATE_QUANTITY', payload: { cartItemId, quantity } });
+    } catch (error) {
+      console.error('Error updating quantity:', error);
+      toast.error('Failed to update item quantity');
+    }
+  };
+
+  const clearCart = async () => {
+    if (!user) return;
+
+    try {
+      await cartService.clearCart();
+      dispatch({ type: 'CLEAR_CART' });
+      toast.success('Cart cleared');
+    } catch (error) {
+      console.error('Error clearing cart:', error);
+      toast.error('Failed to clear cart');
+    }
   };
 
   const toggleCart = () => {
@@ -148,11 +263,34 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }, 0);
   };
 
+  const addToCart = async (
+    productId: string, 
+    productType: string, 
+    quantity: number = 1, 
+    size?: string, 
+    color?: string
+  ) => {
+    if (!user) {
+      toast.error('Please login to add items to cart');
+      return;
+    }
+
+    try {
+      await cartService.addToCart(productId, productType, quantity, size, color);
+      await loadCartItems(); // Refresh cart from database
+      toast.success('Item added to cart!');
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      toast.error('Failed to add item to cart');
+    }
+  };
+
   return (
     <CartContext.Provider
       value={{
         state,
         addItem,
+        addToCart,
         removeItem,
         updateQuantity,
         clearCart,
@@ -160,7 +298,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         setCartOpen,
         getCartTotal,
         getCartCount,
-        getCartSavings
+        getCartSavings,
+        loadCartItems
       }}
     >
       {children}

@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { CartProvider } from "@/context/CartContext";
+import { FavoritesProvider } from "@/context/FavoritesContext";
 import { AdminProvider } from "@/context/AdminContext";
 import { AuthProvider } from "@/context/AuthContext";
 import HomePage from "./pages/HomePage";
@@ -17,6 +18,7 @@ import LoginPage from "./pages/LoginPage";
 import AccountPage from "./pages/AccountPage";
 import SignupPage from "./pages/SignupPage";
 import ProfilePage from "./pages/ProfilePage";
+import FavoritesPage from "./pages/FavoritesPage";
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
 import AdminLoginPage from "./pages/admin/AdminLoginPage";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
@@ -32,10 +34,11 @@ const App = () => (
       <AuthProvider>
         <AdminProvider>
           <CartProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-              <Routes>
+            <FavoritesProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/shop" element={<ShopPage />} />
               <Route path="/product/:id" element={<ProductPage />} />
@@ -47,6 +50,7 @@ const App = () => (
               <Route path="/signup" element={<SignupPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/account" element={<AccountPage />} />
+              <Route path="/favorites" element={<FavoritesPage />} />
               <Route path="/admin" element={<AdminLoginPage />} />
               <Route element={<ProtectedAdminRoute />}>
                 <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
@@ -56,6 +60,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
+            </FavoritesProvider>
           </CartProvider>
         </AdminProvider>
       </AuthProvider>
