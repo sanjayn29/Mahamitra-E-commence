@@ -224,21 +224,20 @@ export const fetchProductById = async (productId: string, preferredCategory?: 'w
       const { data, error } = await supabase
         .from(table.name)
         .select('*')
-        .eq('productId', productId)
-        .single(); // Use .single() to enforce a single row return
+        .eq('productId', productId);
 
       if (error) {
-        if (error.code === 'PGRST116') { // Code for "Not Found"
-          continue; // Product not in this table, try the next one.
-        }
-        // For other errors, log and re-throw.
         console.error(`Error fetching from ${table.name}:`, error);
-        throw error;
+        continue; // Try next table
       }
 
-      if (data) {
-        return transformProduct(data, table.category);
+      // Handle multiple rows - take the first one
+      if (!data || data.length === 0) {
+        continue; // Product not in this table, try the next one.
       }
+
+      // Return first matching product
+      return transformProduct(data[0], table.category);
     } catch (error) {
       // This catch block will handle errors thrown from the try block,
       // including re-thrown Supabase errors.

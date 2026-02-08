@@ -176,31 +176,35 @@ export const cartService = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    // Check if an item with the same product, size, and color already exists.
-    let query = supabase
+    // Normalize size and color to empty string if not provided
+    const normalizedSize = size || '';
+    const normalizedColor = color || '';
+
+    // Check for existing item with same product (current DB constraint: user_id, product_id, product_type only)
+    const { data: existingItems, error: selectError } = await supabase
       .from('cart_items')
-      .select('id, quantity')
+      .select('*')
       .eq('user_id', user.id)
       .eq('product_id', productId)
       .eq('product_type', productType);
-
-    query = size ? query.eq('size', size) : query.is('size', null);
-    query = color ? query.eq('color', color) : query.is('color', null);
-
-    const { data: existingItem, error: selectError } = await query.maybeSingle();
 
     if (selectError) {
       console.error('Error checking for existing cart item:', selectError);
       throw selectError;
     }
 
-    if (existingItem) {
-      // Item exists, update quantity
-      const newQuantity = existingItem.quantity + quantity;
+    // Find exact match including size and color
+    const exactMatch = existingItems?.find(
+      item => (item.size || '') === normalizedSize && (item.color || '') === normalizedColor
+    );
+
+    if (exactMatch) {
+      // Update existing item's quantity
+      const newQuantity = exactMatch.quantity + quantity;
       const { data, error: updateError } = await supabase
         .from('cart_items')
         .update({ quantity: newQuantity })
-        .eq('id', existingItem.id)
+        .eq('id', exactMatch.id)
         .select()
         .single();
       
@@ -211,7 +215,15 @@ export const cartService = {
       return data;
     }
 
-    // Item does not exist, insert it
+    // If there are existing items but no exact match, delete them first
+    // (due to DB constraint limitation - can't have same product with different size/color)
+    if (existingItems && existingItems.length > 0) {
+      for (const item of existingItems) {
+        await supabase.from('cart_items').delete().eq('id', item.id);
+      }
+    }
+
+    // Insert new item
     const { data, error: insertError } = await supabase
       .from('cart_items')
       .insert({
@@ -219,8 +231,8 @@ export const cartService = {
         product_id: productId,
         product_type: productType,
         quantity,
-        size,
-        color,
+        size: normalizedSize,
+        color: normalizedColor,
       })
       .select()
       .single();
