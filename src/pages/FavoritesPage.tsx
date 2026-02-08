@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Heart, ShoppingBag } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Heart } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useFavorites } from '@/context/FavoritesContext';
 import { useAuth } from '@/context/AuthContext';
-import { useCart } from '@/context/CartContext';
 import { FavoriteButton } from '@/components/FavoriteButton';
 import { RatingDisplay } from '@/components/Rating';
 import { supabase } from '@/lib/supabaseClient';
@@ -26,7 +25,6 @@ interface ProductDetails {
 const FavoritesPage = () => {
   const { favorites, loading } = useFavorites();
   const { user } = useAuth();
-  const { addItem } = useCart();
   const [productDetails, setProductDetails] = useState<Record<string, ProductDetails>>({});
 
   // In a real implementation, you would fetch product details here
@@ -74,20 +72,6 @@ const FavoritesPage = () => {
     
     fetchProductDetails();
   }, [favorites]);
-
-  const handleAddToCart = async (productId: string, productType: string) => {
-    const product = productDetails[productId];
-    if (!product) {
-      toast.error('Product details not available');
-      return;
-    }
-
-    try {
-      await addItem(product as any, 1, 'Free Size', 'Default');
-    } catch (error) {
-      console.error('Error adding to cart:', error);
-    }
-  };
 
   if (!user) {
     return (
@@ -183,18 +167,6 @@ const FavoritesPage = () => {
                           size="sm"
                           className="bg-white/90 hover:bg-white shadow-sm"
                         />
-                      </div>
-                      
-                      {/* Quick Add to Cart */}
-                      <div className="absolute bottom-3 left-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        <Button 
-                          onClick={() => handleAddToCart(favorite.product_id, favorite.product_type)}
-                          className="w-full bg-white/90 text-gray-900 hover:bg-white"
-                          size="sm"
-                        >
-                          <ShoppingBag size={16} className="mr-2" />
-                          Add to Cart
-                        </Button>
                       </div>
                     </div>
 

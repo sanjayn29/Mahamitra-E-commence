@@ -1,44 +1,17 @@
 import { Link } from 'react-router-dom';
-import { Star, ShoppingBag } from 'lucide-react';
+import { Star } from 'lucide-react';
 import { EnhancedProduct } from '@/services/productService';
-import { useCart } from '@/context/CartContext';
-import { Button } from '@/components/ui/button';
 import { RatingDisplay } from '@/components/Rating';
 import { FavoriteButton } from '@/components/FavoriteButton';
-import { toast } from 'sonner';
 
 interface ProductCardProps {
   product: EnhancedProduct;
 }
 
 const ProductCard = ({ product }: ProductCardProps) => {
-  const { addItem } = useCart();
   const discount = product.cost && product.cost !== product.price
     ? Math.round(((product.cost - product.price) / product.cost) * 100)
     : 0;
-
-  const handleQuickAdd = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (!product.inStock) {
-      toast.error(`${product.name} is out of stock!`);
-      return;
-    }
-
-    const firstSize = product.sizes && product.sizes.length > 0 ? product.sizes[0] : undefined;
-    const firstColor = product.colors && product.colors.length > 0 ? product.colors[0] : undefined;
-    
-    addItem(product, 1, firstSize, firstColor);
-    
-    const details = [];
-    if (firstSize) details.push(`Size: ${firstSize}`);
-    if (firstColor) details.push(`Color: ${firstColor}`);
-    
-    toast.success(`${product.name} added to cart!`, {
-      description: details.length > 0 ? details.join(' | ') : 'Added to cart successfully',
-    });
-  };
 
   return (
     <Link to={`/product/${product.id}`} className="group block">
@@ -77,19 +50,6 @@ const ProductCard = ({ product }: ProductCardProps) => {
               size="sm"
               className="bg-white/80 hover:bg-white shadow-sm"
             />
-          </div>
-
-          {/* Quick Add Button */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-foreground/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <Button
-              onClick={handleQuickAdd}
-              disabled={!product.inStock}
-              className="w-full bg-background text-foreground hover:bg-primary hover:text-primary-foreground transition-all disabled:opacity-50"
-              size="sm"
-            >
-              <ShoppingBag size={16} className="mr-2" />
-              {product.inStock ? 'Quick Add' : 'Out of Stock'}
-            </Button>
           </div>
         </div>
 

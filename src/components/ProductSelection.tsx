@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { 
   Select,
   SelectContent,
@@ -7,10 +6,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ShoppingBag } from 'lucide-react';
-import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
-import { toast } from 'sonner';
 import { EnhancedProduct } from '@/services/productService';
 
 interface ProductSelectionProps {
@@ -24,50 +20,9 @@ export const ProductSelection: React.FC<ProductSelectionProps> = ({
   quantity = 1,
   className = ""
 }) => {
-  const { addToCart } = useCart();
   const { user } = useAuth();
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('');
-  const [isAdding, setIsAdding] = useState(false);
-
-  const handleAddToCart = async () => {
-    if (!user) {
-      toast.error('Please login to add items to cart');
-      return;
-    }
-
-    // Check if size is required
-    if (product.sizes.length > 1 && !selectedSize) {
-      toast.error('Please select a size');
-      return;
-    }
-
-    // Check if color is required  
-    if (product.colors.length > 1 && !selectedColor) {
-      toast.error('Please select a color');
-      return;
-    }
-
-    setIsAdding(true);
-    try {
-      await addToCart(
-        product.id,
-        product.category,
-        quantity,
-        selectedSize || product.sizes[0],
-        selectedColor || product.colors[0]
-      );
-      
-      toast.success('Added to cart successfully!', {
-        description: `${product.name} - Size: ${selectedSize || product.sizes[0]}, Color: ${selectedColor || product.colors[0]}`
-      });
-    } catch (error) {
-      console.error('Error adding to cart:', error);
-      toast.error('Failed to add to cart');
-    } finally {
-      setIsAdding(false);
-    }
-  };
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -115,16 +70,6 @@ export const ProductSelection: React.FC<ProductSelectionProps> = ({
           </Select>
         </div>
       )}
-
-      {/* Add to Cart Button */}
-      <Button
-        onClick={handleAddToCart}
-        disabled={!product.inStock || isAdding}
-        className="w-full"
-      >
-        <ShoppingBag className="w-4 h-4 mr-2" />
-        {isAdding ? 'Adding...' : 'Add to Cart'}
-      </Button>
 
       {/* Selected values display */}
       {(selectedSize || selectedColor) && (

@@ -123,38 +123,85 @@ const initialState: CartState = {
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [state, dispatch] = useReducer(cartReducer, initialState);
-  const { user } = useAuth();
-
-  // Load cart items when user logs in
-  useEffect(() => {
-    if (user) {
-      loadCartItems();
-    } else {
-      dispatch({ type: 'CLEAR_CART' });
-    }
-  }, [user]);
+  const { user, loading: authLoading } = useAuth();
 
   const loadCartItems = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('No user, skipping cart load');
+      return;
+    }
+
+    console.log('Loading cart items for user:', user.id);
 
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
       const cartItems = await cartService.getCartItems();
       
-      // Transform database cart items to frontend format
-      const transformedItems: CartItem[] = cartItems.map((item: DatabaseCartItem) => ({
-        id: item.id,
-        product: {
-          id: item.product_id,
-          name: 'Loading...', // This would need actual product lookup
-          price: 0,
-          category: item.product_type,
-        } as Product, // You'll need to fetch actual product details
-        quantity: item.quantity,
-        size: item.size || '',
-        color: item.color || '',
-      }));
+      console.log('Cart items from database:', cartItems);
+      
+      // Fetch actual product details for each cart item
+      const transformedItems: CartItem[] = await Promise.all(
+        cartItems.map(async (item: DatabaseCartItem) => {
+          try {
+            // Dynamically import productService to avoid circular dependencies
+            const { getProduct } = await import('@/services/productService');
+            const productDetails = await getProduct(item.product_id, item.product_type as any);
+            
+            if (productDetails) {
+              return {
+                id: item.id,
+                product: {
+                  id: productDetails.productId,
+                  name: productDetails.name,
+                  price: productDetails.price,
+                  category: productDetails.category,
+                  image: productDetails.image,
+                  images: productDetails.images,
+                  description: productDetails.description,
+                  inStock: productDetails.inStock,
+                  rating: productDetails.rating,
+                  reviews: productDetails.reviews,
+                } as Product,
+                quantity: item.quantity,
+                size: item.size || '',
+                color: item.color || '',
+              };
+            } else {
+              // Product not found, return placeholder
+              console.warn(`Product not found: ${item.product_id}`);
+              return {
+                id: item.id,
+                product: {
+                  id: item.product_id,
+                  name: 'Product not found',
+                  price: 0,
+                  category: item.product_type,
+                } as Product,
+                quantity: item.quantity,
+                size: item.size || '',
+                color: item.color || '',
+              };
+            }
+          } catch (error) {
+            console.error(`Error fetching product ${item.product_id}:`, error);
+            // Return placeholder on error
+            return {
+              id: item.id,
+              product: {
+                id: item.product_id,
+                name: 'Error loading product',
+                price: 0,
+                category: item.product_type,
+              } as Product,
+              quantity: item.quantity,
+              size: item.size || '',
+              color: item.color || '',
+            };
+          }
+        })
+      );
 
+      console.log('Transformed cart items:', transformedItems);
       dispatch({ type: 'SET_ITEMS', payload: transformedItems });
     } catch (error) {
       console.error('Error loading cart items:', error);
@@ -163,6 +210,24 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
   };
+
+  // Load cart items when auth is loaded and user is available
+  useEffect(() => {
+    console.log('Cart effect running - authLoading:', authLoading, 'user:', user?.id);
+    
+    if (authLoading) {
+      console.log('Auth still loading, waiting...');
+      return;
+    }
+    
+    if (user) {
+      console.log('User logged in, loading cart');
+      loadCartItems();
+    } else {
+      console.log('No user, clearing cart');
+      dispatch({ type: 'CLEAR_CART' });
+    }
+  }, [user, authLoading]);
 
   const addItem = async (product: Product, quantity: number, size?: string, color?: string) => {
     if (!user) {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Star, Minus, Plus, Heart, Share2, Truck, RefreshCw, Shield, ChevronLeft, Loader2 } from 'lucide-react';
+import { Star, Heart, Share2, Truck, RefreshCw, Shield, ChevronLeft, Loader2 } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
 import ProductCard from '@/components/ProductCard';
 import { Button } from '@/components/ui/button';
@@ -9,18 +9,15 @@ import { FavoriteButton } from '@/components/FavoriteButton';
 import { Comments } from '@/components/Comments';
 import { useProduct } from '@/hooks/useProducts';
 import { fetchProductsByCategory, EnhancedProduct } from '@/services/productService';
-import { useCart } from '@/context/CartContext';
 import { toast } from 'sonner';
 
 const ProductPage = () => {
   const { id } = useParams<{ id: string }>();
   const { product, loading: productLoading, error } = useProduct(id || null);
-  const { addItem } = useCart();
 
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
-  const [quantity, setQuantity] = useState(1);
   const [relatedProducts, setRelatedProducts] = useState<EnhancedProduct[]>([]);
   const [relatedLoading, setRelatedLoading] = useState(false);
 
@@ -76,43 +73,6 @@ const ProductPage = () => {
   const discount = product.cost && product.cost !== product.price
     ? Math.round(((product.cost - product.price) / product.cost) * 100)
     : 0;
-
-  const handleAddToCart = () => {
-    // Only require selection if there are multiple options
-    const finalSize = selectedSize || (product.sizes && product.sizes.length > 0 ? product.sizes[0] : 'Free Size');
-    const finalColor = selectedColor || (product.colors && product.colors.length > 0 ? product.colors[0] : 'Default');
-    
-    // Check if size selection is required (more than one option)
-    if (product.sizes && product.sizes.length > 1 && !selectedSize) {
-      toast.error('Please select a size');
-      return;
-    }
-    
-    // Check if color selection is required (more than one option)  
-    if (product.colors && product.colors.length > 1 && !selectedColor) {
-      toast.error('Please select a color');
-      return;
-    }
-    
-    console.log('Adding to cart with:', { 
-      product: product.name, 
-      quantity, 
-      size: finalSize, 
-      color: finalColor,
-      productSizes: product.sizes,
-      productColors: product.colors 
-    });
-    
-    try {
-      addItem(product, quantity, finalSize, finalColor);
-      toast.success(`${product.name} added to cart!`, {
-        description: `Size: ${finalSize} | Color: ${finalColor}`
-      });
-    } catch (error) {
-      console.error('Error adding to cart:', error);
-      toast.error('Failed to add to cart');
-    }
-  };
 
   return (
     <MainLayout>
@@ -297,35 +257,8 @@ const ProductPage = () => {
               </div>
             )}
 
-            {/* Quantity & Add to Cart */}
-            <div className="flex flex-col sm:flex-row gap-4">
-              {/* Quantity */}
-              <div className="flex items-center border border-border rounded-lg">
-                <button
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="w-12 h-12 flex items-center justify-center hover:bg-muted transition-colors"
-                >
-                  <Minus size={18} />
-                </button>
-                <span className="w-16 text-center font-sans font-medium">{quantity}</span>
-                <button
-                  onClick={() => setQuantity(quantity + 1)}
-                  className="w-12 h-12 flex items-center justify-center hover:bg-muted transition-colors"
-                >
-                  <Plus size={18} />
-                </button>
-              </div>
-
-              {/* Add to Cart */}
-              <Button
-                onClick={handleAddToCart}
-                size="lg"
-                className="flex-1 gradient-primary text-primary-foreground h-12"
-              >
-                Add to Cart
-              </Button>
-
-              {/* Wishlist */}
+            {/* Wishlist */}
+            <div className="flex gap-4">
               <FavoriteButton 
                 productId={product.id}
                 productType={product.category}

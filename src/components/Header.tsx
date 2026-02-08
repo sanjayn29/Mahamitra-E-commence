@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { ShoppingBag, Menu, X, User, Heart, Search, LogOut } from 'lucide-react';
-import { useCart } from '@/context/CartContext';
+import { Menu, X, User, Heart, Search, LogOut } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,15 +12,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import CartDrawer from '@/components/CartDrawer';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { getCartCount, toggleCart } = useCart();
   const { user, signOut } = useAuth();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const cartCount = getCartCount();
 
   const navLinks = [
     { path: '/', label: 'Home' },
@@ -174,19 +170,6 @@ const Header = () => {
                   </Link>
                 </div>
               )}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative"
-                onClick={toggleCart}
-              >
-                <ShoppingBag size={20} />
-                {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs w-5 h-5 rounded-full flex items-center justify-center font-sans">
-                    {cartCount}
-                  </span>
-                )}
-              </Button>
             </div>
           </div>
         </div>
@@ -213,8 +196,6 @@ const Header = () => {
           </div>
         )}
       </header>
-
-      <CartDrawer />
     </>
   );
 };

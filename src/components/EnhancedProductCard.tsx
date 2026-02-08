@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Heart, ShoppingBag, Star } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Star } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Select,
@@ -11,11 +10,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Link } from 'react-router-dom';
-import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { FavoriteButton } from './FavoriteButton';
 import { RatingDisplay } from './Rating';
-import { toast } from 'sonner';
 import { EnhancedProduct } from '@/services/productService';
 
 interface EnhancedProductCardProps {
@@ -27,45 +24,9 @@ export const EnhancedProductCard: React.FC<EnhancedProductCardProps> = ({
   product, 
   showQuickAdd = true 
 }) => {
-  const { addToCart } = useCart();
   const { user } = useAuth();
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('');
-  const [isAddingToCart, setIsAddingToCart] = useState(false);
-
-  const handleAddToCart = async () => {
-    if (!user) {
-      toast.error('Please login to add items to cart');
-      return;
-    }
-
-    // Check if size selection is required
-    if (product.sizes && product.sizes.length > 0 && !selectedSize) {
-      toast.error('Please select a size');
-      return;
-    }
-
-    setIsAddingToCart(true);
-    try {
-      await addToCart(
-        product.id, 
-        product.category, 
-        1,
-        selectedSize || undefined,
-        selectedColor || undefined
-      );
-      toast.success('Added to cart successfully!');
-      
-      // Reset selections after successful add
-      setSelectedSize('');
-      setSelectedColor('');
-    } catch (error) {
-      console.error('Error adding to cart:', error);
-      toast.error('Failed to add to cart');
-    } finally {
-      setIsAddingToCart(false);
-    }
-  };
 
   const discount = product.cost && product.cost !== product.price
     ? Math.round(((product.cost - product.price) / product.cost) * 100)
@@ -177,19 +138,6 @@ export const EnhancedProductCard: React.FC<EnhancedProductCardProps> = ({
           </>
         )}
       </CardContent>
-        
-      {showQuickAdd && (
-        <CardFooter className="p-4 pt-0">
-          <Button 
-            onClick={handleAddToCart} 
-            className="w-full bg-purple-600 hover:bg-purple-700"
-            disabled={!product.inStock || isAddingToCart}
-          >
-            <ShoppingBag className="w-4 h-4 mr-2" />
-            {isAddingToCart ? 'Adding...' : 'Add to Cart'}
-          </Button>
-        </CardFooter>
-      )}
     </Card>
   );
 };
