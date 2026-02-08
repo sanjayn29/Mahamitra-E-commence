@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { Star, Heart, Share2, Truck, RefreshCw, Shield, ChevronLeft, Loader2 } from 'lucide-react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { Star, Heart, Share2, Truck, RefreshCw, Shield, ChevronLeft, Loader2, ShoppingBag } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
 import ProductCard from '@/components/ProductCard';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 
 const ProductPage = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { product, loading: productLoading, error } = useProduct(id || null);
 
   const [selectedImage, setSelectedImage] = useState(0);
@@ -259,6 +260,21 @@ const ProductPage = () => {
 
             {/* Wishlist */}
             <div className="flex gap-4">
+              <Button
+                size="lg"
+                className="flex-1"
+                onClick={() => {
+                  const params = new URLSearchParams();
+                  if (selectedSize) params.append('size', selectedSize);
+                  if (selectedColor) params.append('color', selectedColor);
+                  navigate(`/buy-now/${product.id}?${params.toString()}`);
+                }}
+                disabled={!product.inStock}
+              >
+                <ShoppingBag size={20} className="mr-2" />
+                Buy Now
+              </Button>
+              
               <FavoriteButton 
                 productId={product.id}
                 productType={product.category}

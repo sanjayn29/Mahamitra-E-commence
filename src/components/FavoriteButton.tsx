@@ -32,12 +32,15 @@ export const FavoriteButton = ({
   };
 
   const heartSize = size === 'sm' ? 16 : size === 'md' ? 20 : 24;
+  
+  // Map our size prop to Button's valid size values
+  const buttonSize = size === 'md' ? 'default' : size === 'lg' ? 'lg' : 'sm';
 
   if (variant === 'icon') {
     return (
       <Button
         variant="ghost"
-        size={size}
+        size={buttonSize}
         onClick={handleClick}
         disabled={!user || loading}
         className={cn(
@@ -63,7 +66,7 @@ export const FavoriteButton = ({
   return (
     <Button
       variant={isCurrentlyFavorite ? "default" : "outline"}
-      size={size}
+      size={buttonSize}
       onClick={handleClick}
       disabled={!user || loading}
       className={cn(
