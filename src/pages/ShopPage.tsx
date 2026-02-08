@@ -33,6 +33,7 @@ const ShopPage = () => {
   const [loading, setLoading] = useState(true);
 
   const selectedCategory = searchParams.get('category') as 'women' | 'girls' | 'babies' | null;
+  const searchQuery = searchParams.get('search') || '';
 
   // Fetch products based on category selection
   useEffect(() => {
@@ -64,6 +65,20 @@ const ShopPage = () => {
   const filteredProducts = useMemo(() => {
     let result = [...products];
 
+    // Filter by search query (name, ID, material, category)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(
+        (p) =>
+          p.name.toLowerCase().includes(query) ||
+          p.productId.toLowerCase().includes(query) ||
+          p.id.toLowerCase().includes(query) ||
+          p.material.toLowerCase().includes(query) ||
+          p.category.toLowerCase().includes(query) ||
+          p.subcategory.toLowerCase().includes(query)
+      );
+    }
+
     // Filter by price range
     result = result.filter(
       (p) => p.price >= priceRange[0] && p.price <= priceRange[1]
@@ -78,7 +93,7 @@ const ShopPage = () => {
         result.sort((a, b) => b.price - a.price);
         break;
       case 'rating':
-        result.sort((a, b) => b.rating - a.rating);
+        // Skip sort by rating since we removed fake ratings
         break;
       case 'newest':
         result.sort((a, b) => {
@@ -96,7 +111,7 @@ const ShopPage = () => {
     }
 
     return result;
-  }, [products, priceRange, sortBy]);
+  }, [products, priceRange, sortBy, searchQuery]);
 
   const handleCategoryChange = (category: string) => {
     if (category === selectedCategory) {
@@ -122,7 +137,8 @@ const ShopPage = () => {
 
   const activeFiltersCount =
     (selectedCategory ? 1 : 0) +
-    (priceRange[0] > 0 || priceRange[1] < 30000 ? 1 : 0);
+    (priceRange[0] > 0 || priceRange[1] < 30000 ? 1 : 0) +
+    (searchQuery ? 1 : 0);
 
   const FilterContent = () => (
     <div className="space-y-6">
@@ -186,13 +202,16 @@ const ShopPage = () => {
       <section className="bg-muted py-12">
         <div className="container mx-auto px-4 text-center">
           <h1 className="font-serif text-4xl md:text-5xl font-semibold mb-4">
-            {selectedCategory
+            {searchQuery
+              ? `Search Results for "${searchQuery}"`
+              : selectedCategory
               ? categories.find((c) => c.id === selectedCategory)?.name + "'s Collection"
               : 'Our Collection'}
           </h1>
           <p className="text-muted-foreground font-sans max-w-2xl mx-auto">
-            Explore our curated selection of elegant apparel. From traditional to contemporary,
-            find the perfect piece that speaks to your style.
+            {searchQuery
+              ? `Found ${filteredProducts.length} ${filteredProducts.length === 1 ? 'product' : 'products'} matching your search`
+              : 'Explore our curated selection of elegant apparel. From traditional to contemporary, find the perfect piece that speaks to your style.'}
           </p>
         </div>
       </section>
@@ -203,6 +222,18 @@ const ShopPage = () => {
           {activeFiltersCount > 0 && (
             <div className="flex flex-wrap items-center gap-2 mb-6">
               <span className="text-sm font-sans text-muted-foreground">Active Filters:</span>
+              {searchQuery && (
+                <button
+                  onClick={() => {
+                    searchParams.delete('search');
+                    setSearchParams(searchParams);
+                  }}
+                  className="inline-flex items-center gap-1 bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-sans"
+                >
+                  Search: "{searchQuery}"
+                  <X size={14} />
+                </button>
+              )}
               {selectedCategory && (
                 <button
                   onClick={() => handleCategoryChange(selectedCategory)}

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Link, useLocation, useSearchParams, useNavigate } from 'react-router-dom';
 import { Menu, X, User, Heart, Search, LogOut } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -12,12 +12,20 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { fetchAllProducts, EnhancedProduct } from '@/services/productService';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchResults, setSearchResults] = useState<EnhancedProduct[]>([]);
+  const [showResults, setShowResults] = useState(false);
+  const [allProducts, setAllProducts] = useState<EnhancedProduct[]>([]);
+  const searchRef = useRef<HTMLDivElement>(null);
   const { user, signOut } = useAuth();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   const navLinks = [
     { path: '/', label: 'Home' },
@@ -28,6 +36,69 @@ const Header = () => {
     { path: '/about', label: 'About' },
     { path: '/contact', label: 'Contact' },
   ];
+
+  // Load all products for search
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        const products = await fetchAllProducts();
+        setAllProducts(products);
+      } catch (error) {
+        console.error('Error loading products for search:', error);
+      }
+    };
+    loadProducts();
+  }, []);
+
+  // Filter products as user types
+  useEffect(() => {
+    if (searchQuery.trim().length > 0) {
+      const query = searchQuery.toLowerCase();
+      const filtered = allProducts.filter(
+        (p) =>
+          p.name.toLowerCase().includes(query) ||
+          p.productId.toLowerCase().includes(query) ||
+          p.id.toLowerCase().includes(query) ||
+          p.material.toLowerCase().includes(query) ||
+          p.category.toLowerCase().includes(query) ||
+          p.subcategory.toLowerCase().includes(query)
+      ).slice(0, 5); // Limit to 5 suggestions
+      setSearchResults(filtered);
+      setShowResults(true);
+    } else {
+      setSearchResults([]);
+      setShowResults(false);
+    }
+  }, [searchQuery, allProducts]);
+
+  // Close search results when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowResults(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/shop?search=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery('');
+      setIsSearchOpen(false);
+      setShowResults(false);
+    }
+  };
+
+  const handleProductClick = (productId: string) => {
+    navigate(`/product/${productId}`);
+    setSearchQuery('');
+    setIsSearchOpen(false);
+    setShowResults(false);
+    setIsMenuOpen(false);
+  };
 
   const isActive = (path: string) => {
     // Handle home page
@@ -107,7 +178,12 @@ const Header = () => {
 
             {/* Right Icons */}
             <div className="flex items-center gap-2 md:gap-4">
-              <Button variant="ghost" size="icon" className="hidden md:flex">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="hidden md:flex"
+                onClick={() => setIsSearchOpen(!isSearchOpen)}
+              >
                 <Search size={20} />
               </Button>
               <Button variant="ghost" size="icon" className="hidden md:flex" asChild>
@@ -172,12 +248,140 @@ const Header = () => {
               )}
             </div>
           </div>
+
+          {/* Search Bar */}
+          {isSearchOpen && (
+            <div className="py-4 border-t border-border" ref={searchRef}>
+              <form onSubmit={handleSearch} className="flex gap-2">
+                <div className="flex-1 relative">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onFocus={() => searchQuery && setShowResults(true)}
+                    placeholder="Search by name, ID, material, or category..."
+                    className="w-full px-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-background"
+                    autoFocus
+                  />
+                  
+                  {/* Search Results Dropdown */}
+                  {showResults && searchResults.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-50 max-h-96 overflow-y-auto">
+                      {searchResults.map((product) => (
+                        <div
+                          key={product.id}
+                          onClick={() => handleProductClick(product.id)}
+                          className="flex items-center gap-3 p-3 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
+                        >
+                          <img
+                            src={product.image || '/placeholder-image.jpg'}
+                            alt={product.name}
+                            className="w-12 h-12 object-cover rounded"
+                            onError={(e) => {
+                              e.currentTarget.src = '/placeholder-image.jpg';
+                            }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{product.name}</p>
+                            <p className="text-xs text-muted-foreground">{product.category} • {product.material}</p>
+                            <p className="text-sm font-semibold text-primary">₹{product.price.toLocaleString()}</p>
+                          </div>
+                        </div>
+                      ))}
+                      {searchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleSearch(new Event('submit') as any);
+                          }}
+                          className="w-full p-3 text-sm text-center text-primary hover:bg-muted font-medium"
+                        >
+                          View all results for "{searchQuery}"
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <Button type="submit" disabled={!searchQuery.trim()}>
+                  Search
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline"
+                  onClick={() => {
+                    setIsSearchOpen(false);
+                    setSearchQuery('');
+                    setShowResults(false);
+                  }}
+                >
+                  <X size={16} />
+                </Button>
+              </form>
+            </div>
+          )}
         </div>
 
         {/* Mobile Navigation */}
         {isMenuOpen && (
           <div className="lg:hidden absolute top-full left-0 right-0 bg-background border-b border-border animate-fade-in">
             <nav className="container mx-auto px-4 py-4">
+              {/* Mobile Search */}
+              <div className="mb-4 relative" ref={searchRef}>
+                <form onSubmit={handleSearch} className="flex gap-2">
+                  <div className="flex-1 relative">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onFocus={() => searchQuery && setShowResults(true)}
+                      placeholder="Search products..."
+                      className="w-full px-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-background text-sm"
+                    />
+                    
+                    {/* Mobile Search Results Dropdown */}
+                    {showResults && searchResults.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-50 max-h-72 overflow-y-auto">
+                        {searchResults.map((product) => (
+                          <div
+                            key={product.id}
+                            onClick={() => handleProductClick(product.id)}
+                            className="flex items-center gap-2 p-2 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
+                          >
+                            <img
+                              src={product.image || '/placeholder-image.jpg'}
+                              alt={product.name}
+                              className="w-10 h-10 object-cover rounded"
+                              onError={(e) => {
+                                e.currentTarget.src = '/placeholder-image.jpg';
+                              }}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium truncate">{product.name}</p>
+                              <p className="text-xs text-muted-foreground">{product.category}</p>
+                              <p className="text-xs font-semibold text-primary">₹{product.price.toLocaleString()}</p>
+                            </div>
+                          </div>
+                        ))}
+                        {searchQuery && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleSearch(new Event('submit') as any);
+                            }}
+                            className="w-full p-2 text-xs text-center text-primary hover:bg-muted font-medium"
+                          >
+                            View all results
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <Button type="submit" size="sm" disabled={!searchQuery.trim()}>
+                    <Search size={16} />
+                  </Button>
+                </form>
+              </div>
+              
               <div className="flex flex-col gap-4">
                 {navLinks.map((link) => (
                   <Link
