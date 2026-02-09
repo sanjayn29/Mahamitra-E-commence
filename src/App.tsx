@@ -18,6 +18,7 @@ import AccountPage from "./pages/AccountPage";
 import SignupPage from "./pages/SignupPage";
 import ProfilePage from "./pages/ProfilePage";
 import FavoritesPage from "./pages/FavoritesPage";
+import OrdersPage from "./pages/OrdersPage";
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
 import AdminLoginPage from "./pages/admin/AdminLoginPage";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
@@ -51,6 +52,7 @@ const App = () => (
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/account" element={<AccountPage />} />
               <Route path="/favorites" element={<FavoritesPage />} />
+              <Route path="/orders" element={<OrdersPage />} />
               <Route path="/admin" element={<AdminLoginPage />} />
               <Route element={<ProtectedAdminRoute />}>
                 <Route path="/admin/dashboard" element={<AdminDashboardPage />} />

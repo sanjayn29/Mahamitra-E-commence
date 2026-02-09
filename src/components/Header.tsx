@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useSearchParams, useNavigate } from 'react-router-dom';
-import { Menu, X, User, Heart, Search, LogOut } from 'lucide-react';
+import { Menu, X, User, Heart, Search, LogOut, Package } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import {
@@ -189,6 +189,11 @@ const Header = () => {
               <Button variant="ghost" size="icon" className="hidden md:flex" asChild>
                 <Link to="/favorites" title="Favorites">
                   <Heart size={20} />
+                </Link>
+              </Button>
+              <Button variant="ghost" size="icon" className="hidden md:flex" asChild>
+                <Link to="/orders" title="My Orders">
+                  <Package size={20} />
                 </Link>
               </Button>
               
@@ -395,6 +400,24 @@ const Header = () => {
                     {link.label}
                   </Link>
                 ))}
+                <Link
+                  to="/favorites"
+                  onClick={() => setIsMenuOpen(false)}
+                  className={`text-base font-sans font-medium py-2 transition-colors flex items-center gap-2 ${
+                    isActive('/favorites') ? 'text-primary' : 'text-foreground'
+                  }`}
+                >
+                  <Heart size={18} /> Favorites
+                </Link>
+                <Link
+                  to="/orders"
+                  onClick={() => setIsMenuOpen(false)}
+                  className={`text-base font-sans font-medium py-2 transition-colors flex items-center gap-2 ${
+                    isActive('/orders') ? 'text-primary' : 'text-foreground'
+                  }`}
+                >
+                  <Package size={18} /> Orders
+                </Link>
               </div>
             </nav>
           </div>
