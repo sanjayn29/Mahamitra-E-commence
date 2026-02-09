@@ -129,10 +129,7 @@ const Header = () => {
   return (
     <>
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
-        {/* Top Bar */}
-        <div className="bg-primary text-primary-foreground text-center py-2 text-sm font-sans">
-          <p>✨ Free Shipping on Orders Above ₹2,999 | Use Code: MAHAMITRA15 for 15% Off ✨</p>
-        </div>
+        
 
         {/* Main Header */}
         <div className="container mx-auto px-4">

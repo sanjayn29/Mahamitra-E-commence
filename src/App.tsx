@@ -26,6 +26,7 @@ import AddProductPage from "./pages/admin/AddProductPage";
 import InventoryManagement from "./pages/admin/InventoryManagement";
 import Orders from "./pages/admin/Orders";
 import ViewAnalysis from "./pages/admin/ViewAnalysis";
+import DiscountCoupons from "./pages/admin/DiscountCoupons";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -60,6 +61,7 @@ const App = () => (
                 <Route path="/admin/inventory" element={<InventoryManagement />} />
                 <Route path="/admin/orders" element={<Orders />} />
                 <Route path="/admin/analytics" element={<ViewAnalysis />} />
+                <Route path="/admin/coupons" element={<DiscountCoupons />} />
               </Route>
               <Route path="*" element={<NotFound />} />
               </Routes>

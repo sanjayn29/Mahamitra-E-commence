@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Package, ShoppingCart, BarChart3, ListChecks, LogOut } from 'lucide-react';
+import { Package, ShoppingCart, BarChart3, ListChecks, LogOut, Ticket } from 'lucide-react';
 import { useAdmin } from '@/context/AdminContext';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -40,6 +40,13 @@ const AdminDashboardPage = () => {
       title: 'View Analysis',
       path: '/admin/analytics',
       icon: BarChart3,
+      variant: 'default' as const,
+      primary: true,
+    },
+    {
+      title: 'Discount Coupons',
+      path: '/admin/coupons',
+      icon: Ticket,
       variant: 'default' as const,
       primary: true,
     },
