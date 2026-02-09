@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { Loader2, ShoppingBag, ArrowLeft } from 'lucide-react';
+import { Loader2, ShoppingBag, ArrowLeft, Tag, X } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,6 +28,11 @@ const BuyNowPage = () => {
   const selectedSize = searchParams.get('size') || '';
   const selectedColor = searchParams.get('color') || '';
 
+  // Coupon state
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount_amount: number } | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+
   // Form state
   const [formData, setFormData] = useState({
     fullName: user?.user_metadata?.full_name || user?.user_metadata?.name || '',
@@ -36,7 +42,6 @@ const BuyNowPage = () => {
     city: '',
     pincode: '',
     quantity: 1,
-    discountCode: ''
   });
 
   // Load product
@@ -74,8 +79,49 @@ const BuyNowPage = () => {
 
   // Calculate totals
   const subtotal = product ? product.price * formData.quantity : 0;
-  const discount = 0; // Can be calculated based on discount code
+  const discount = appliedCoupon ? Math.min(appliedCoupon.discount_amount, subtotal) : 0;
   const total = subtotal - discount;
+
+  const handleApplyCoupon = async () => {
+    const trimmed = couponCode.trim().toUpperCase();
+    if (!trimmed) {
+      toast.error('Please enter a coupon code');
+      return;
+    }
+
+    try {
+      setCouponLoading(true);
+      const { data, error } = await supabase
+        .from('discount_coupons')
+        .select('code, discount_amount, is_active')
+        .eq('code', trimmed)
+        .single();
+
+      if (error || !data) {
+        toast.error('Invalid coupon code');
+        return;
+      }
+
+      if (!data.is_active) {
+        toast.error('This coupon is no longer active');
+        return;
+      }
+
+      setAppliedCoupon({ code: data.code, discount_amount: data.discount_amount });
+      toast.success(`Coupon "${data.code}" applied! You save ₹${Math.min(data.discount_amount, subtotal).toLocaleString()}`);
+    } catch (error) {
+      console.error('Error validating coupon:', error);
+      toast.error('Failed to validate coupon');
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+    toast.info('Coupon removed');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -289,14 +335,41 @@ const BuyNowPage = () => {
 
                   {/* Discount Code */}
                   <div>
-                    <Label htmlFor="discountCode">Discount Code (Optional)</Label>
-                    <Input
-                      id="discountCode"
-                      name="discountCode"
-                      value={formData.discountCode}
-                      onChange={handleInputChange}
-                      placeholder="Enter discount code"
-                    />
+                    <Label>Discount Coupon (Optional)</Label>
+                    {appliedCoupon ? (
+                      <div className="flex items-center gap-2 mt-2 p-3 bg-green-50 border border-green-200 rounded-md">
+                        <Tag size={18} className="text-green-600" />
+                        <span className="font-mono font-semibold text-green-700">{appliedCoupon.code}</span>
+                        <span className="text-sm text-green-600 ml-auto">-₹{Math.min(appliedCoupon.discount_amount, subtotal).toLocaleString()}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          onClick={handleRemoveCoupon}
+                        >
+                          <X size={16} />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2 mt-2">
+                        <Input
+                          placeholder="Enter coupon code"
+                          value={couponCode}
+                          onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                          className="uppercase"
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleApplyCoupon(); } }}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleApplyCoupon}
+                          disabled={couponLoading || !couponCode.trim()}
+                        >
+                          {couponLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Submit Button */}

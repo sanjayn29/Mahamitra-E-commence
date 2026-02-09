@@ -218,7 +218,7 @@ const HomePage = () => {
               Limited Time Offer
             </span>
             <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-4">
-              Flat 20% Off on First Order
+              Flat Rs : 200 Off on First Order
             </h2>
             <p className="text-muted-foreground font-sans mb-6 max-w-xl mx-auto">
               Use code <span className="font-semibold text-primary">MAHAMITRA20</span> at checkout.
