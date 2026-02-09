@@ -324,7 +324,9 @@ const HomePage = () => {
             {[1, 2, 3, 4, 5, 6].map((_, index) => (
               <a
                 key={index}
-                href="#"
+                href="https://www.sanjayn.me"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="aspect-square rounded-lg overflow-hidden group"
               >
                 <img

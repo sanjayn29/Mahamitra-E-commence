@@ -31,10 +31,10 @@ const Footer = () => {
                 <a href={CONTACT_INFO.social.instagram.url} target="_blank" rel="noopener noreferrer" className="text-background/70 hover:text-primary transition-colors">
                   <Instagram size={20} />
                 </a>
-                <a href="#" className="text-background/70 hover:text-primary transition-colors">
+                <a href="https://www.sanjayn.me" target="_blank" rel="noopener noreferrer" className="text-background/70 hover:text-primary transition-colors">
                   <Facebook size={20} />
                 </a>
-                <a href="#" className="text-background/70 hover:text-primary transition-colors">
+                <a href="https://www.sanjayn.me" target="_blank" rel="noopener noreferrer" className="text-background/70 hover:text-primary transition-colors">
                   <Twitter size={20} />
                 </a>
               </div>
@@ -106,7 +106,7 @@ const Footer = () => {
                 </li>
                 <li className="flex items-center gap-3">
                   <Phone size={18} className="text-primary flex-shrink-0" />
-                  <span className="text-background/70">+91 95008 44405</span>
+                  <a href="tel:9500844405" className="text-background/70 hover:text-primary transition-colors">+91 95008 44405</a>
                 </li>
                 <li className="flex items-center gap-3">
                   <Mail size={18} className="text-primary flex-shrink-0" />

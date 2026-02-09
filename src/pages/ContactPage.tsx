@@ -219,7 +219,7 @@ const ContactPage = () => {
                   </div>
                   <h3 className="font-serif text-lg font-medium mb-2">Call Us</h3>
                   <p className="text-muted-foreground font-sans text-sm">
-                    +91 95008 44405<br />
+                    <a href="tel:9500844405" className="hover:text-primary transition-colors">+91 95008 44405</a><br />
                     <span className="text-xs">Ms. Ramya, Managing Partner</span>
                   </p>
                 </div>
@@ -260,13 +260,17 @@ const ContactPage = () => {
                     <Instagram size={24} />
                   </a>
                   <a
-                    href="#"
+                    href="https://www.sanjayn.me"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="w-12 h-12 bg-card rounded-full flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors shadow"
                   >
                     <Facebook size={24} />
                   </a>
                   <a
-                    href="#"
+                    href="https://www.sanjayn.me"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="w-12 h-12 bg-card rounded-full flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors shadow"
                   >
                     <MessageCircle size={24} />
