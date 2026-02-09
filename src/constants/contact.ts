@@ -34,10 +34,10 @@ export const CONTACT_INFO = {
       url: 'https://instagram.com/_n_sanjay_',
     },
     facebook: {
-      url: '#', // To be updated when available
+      url: 'https://instagram.com/_n_sanjay_' // To be updated when available
     },
     whatsapp: {
-      url: '#', // To be updated when available
+      url: 'https://instagram.com/_n_sanjay_', // To be updated when available
     },
   },
   businessHours: {
