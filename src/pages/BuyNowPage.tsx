@@ -132,9 +132,9 @@ const BuyNowPage = () => {
           toast.success(`Payment successful! Payment ID: ${paymentId}`);
           toast.success('Order placed successfully!');
           
-          // Navigate to profile/orders page after 2 seconds
+          // Navigate to home page after 2 seconds
           setTimeout(() => {
-            navigate('/profile');
+            navigate('/');
           }, 2000);
         },
         (error: string) => {
