@@ -123,7 +123,14 @@ const Footer = () => {
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm font-sans text-background/60">
             <p>© 2026 Mahamitra Boutique. All rights reserved.</p>
-            
+            <a
+              href="https://www.sanjayn.me"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-background/60 hover:text-primary transition-colors"
+            >
+              Developed by Sanjay N
+            </a>
           </div>
         </div>
       </div>

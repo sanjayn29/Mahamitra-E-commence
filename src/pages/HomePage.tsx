@@ -79,7 +79,7 @@ const HomePage = () => {
           <div className="max-w-2xl animate-fade-in">
             <span className="inline-flex items-center gap-2 bg-background/20 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm font-sans mb-6">
               <Sparkles size={16} />
-              New Collection 2024
+              New Collection 2026
             </span>
             <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl font-semibold text-white leading-tight mb-6">
               Embrace Elegance,
@@ -104,10 +104,20 @@ const HomePage = () => {
               <Button
                 asChild
                 size="lg"
-                variant="outline"
-                className="border-white text-white hover:bg-white/10 font-sans"
+                className="bg-background text-foreground hover:bg-background/90 font-sans"
               >
-                <Link to="/shop?category=babies">Shop Babies</Link>
+                <Link to="/shop?category=babies">Shop Babies
+              <ArrowRight size={18} className="ml-2" />
+                </Link>
+              </Button>
+              <Button
+                asChild
+                size="lg"
+                className="bg-background text-foreground hover:bg-background/90 font-sans"
+              >
+                <Link to="/shop?category=girls">Shop Girls
+              <ArrowRight size={18} className="ml-2" />
+                </Link>
               </Button>
             </div>
           </div>
