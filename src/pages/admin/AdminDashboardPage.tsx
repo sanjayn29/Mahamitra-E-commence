@@ -26,19 +26,22 @@ const AdminDashboardPage = () => {
       title: 'Inventory Management',
       path: '/admin/inventory',
       icon: ListChecks,
-      variant: 'outline' as const,
+      variant: 'default' as const,
+      primary: true,
     },
     {
       title: 'Orders',
       path: '/admin/orders',
       icon: ShoppingCart,
-      variant: 'outline' as const,
+      variant: 'default' as const,
+      primary: true,
     },
     {
       title: 'View Analysis',
       path: '/admin/analytics',
       icon: BarChart3,
-      variant: 'outline' as const,
+      variant: 'default' as const,
+      primary: true,
     },
   ];
 
