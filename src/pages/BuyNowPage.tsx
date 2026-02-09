@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import MainLayout from '@/layouts/MainLayout';
 import { fetchProductById, EnhancedProduct } from '@/services/productService';
+import { initiateRazorpayPayment } from '@/services/razorpayService';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 
@@ -105,24 +106,46 @@ const BuyNowPage = () => {
     try {
       setSubmitting(true);
       
-      // Here you would submit the order to your backend
-      // For now, just show success message
-      console.log('Order details:', {
-        product,
+      // Prepare order data for Razorpay
+      const orderData = {
+        productId: product!.id,
+        productName: product!.name,
+        productImage: product!.image,
         selectedSize,
         selectedColor,
-        ...formData,
-        subtotal,
-        discount,
-        total
-      });
+        quantity: formData.quantity,
+        price: product!.price,
+        total: total,
+        customerName: formData.fullName,
+        customerEmail: formData.email,
+        customerPhone: formData.phoneNumber,
+        deliveryAddress: formData.deliveryAddress,
+        city: formData.city,
+        pincode: formData.pincode,
+      };
 
-      toast.success('Order placed successfully!');
-      navigate('/profile');
+      // Initiate Razorpay payment
+      initiateRazorpayPayment(
+        orderData,
+        (paymentId: string) => {
+          // Payment success callback
+          toast.success(`Payment successful! Payment ID: ${paymentId}`);
+          toast.success('Order placed successfully!');
+          
+          // Navigate to profile/orders page after 2 seconds
+          setTimeout(() => {
+            navigate('/profile');
+          }, 2000);
+        },
+        (error: string) => {
+          // Payment failure callback
+          toast.error(error);
+          setSubmitting(false);
+        }
+      );
     } catch (error) {
-      console.error('Error placing order:', error);
-      toast.error('Failed to place order');
-    } finally {
+      console.error('Error initiating payment:', error);
+      toast.error('Failed to initiate payment');
       setSubmitting(false);
     }
   };
@@ -286,10 +309,10 @@ const BuyNowPage = () => {
                     {submitting ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Processing...
+                        Processing Payment...
                       </>
                     ) : (
-                      `Place Order - ₹${total.toLocaleString()}`
+                      `Pay Now - ₹${total.toLocaleString()}`
                     )}
                   </Button>
                 </form>
