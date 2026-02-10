@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MapPin, Phone, Mail, Clock, Send, Instagram, Facebook, MessageCircle } from 'lucide-react';
+import { MapPin, Phone, Mail, Clock, Send, Instagram, MessageCircle, Globe } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -260,15 +260,15 @@ const ContactPage = () => {
                     <Instagram size={24} />
                   </a>
                   <a
-                    href="https://www.sanjayn.me"
+                    href={CONTACT_INFO.social.website.url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-12 h-12 bg-card rounded-full flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors shadow"
                   >
-                    <Facebook size={24} />
+                    <Globe size={24} />
                   </a>
                   <a
-                    href="https://www.sanjayn.me"
+                    href={CONTACT_INFO.social.whatsapp.url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-12 h-12 bg-card rounded-full flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors shadow"

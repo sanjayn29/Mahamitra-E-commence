@@ -629,7 +629,7 @@ const HomePage = () => {
             Follow Us on Instagram
           </h2>
           <p className="text-muted-foreground font-sans mb-10 max-w-lg mx-auto">
-            @mahamitraboutique – Join our community and get styling inspiration
+            @mahamitrafashions – Join our community and get styling inspiration
           </p>
 
           {/* Use real product images from the store */}

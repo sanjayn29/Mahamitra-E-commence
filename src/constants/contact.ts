@@ -2,7 +2,7 @@
 export const CONTACT_INFO = {
   company: {
     name: 'MAHAMITRA',
-    fullName: 'Mahamitra Boutique',
+    fullName: 'Mahamitra',
     tagline: 'Premium Fashion Destination',
     gstin: '33AQWPR5424R1ZT',
   },
@@ -30,14 +30,15 @@ export const CONTACT_INFO = {
   },
   social: {
     instagram: {
-      handle: '_n_sanjay_',
-      url: 'https://instagram.com/_n_sanjay_',
+      handle: 'mahamitrafashions',
+      url: 'https://instagram.com/mahamitrafashions',
     },
-    facebook: {
-      url: 'https://instagram.com/_n_sanjay_' // To be updated when available
+    website: {
+      url: 'https://www.mahamitra.app',
     },
     whatsapp: {
-      url: 'https://instagram.com/_n_sanjay_', // To be updated when available
+      number: '+91 95008 44405',
+      url: 'https://wa.me/9500844405',
     },
   },
   businessHours: {

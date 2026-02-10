@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useSearchParams, useNavigate } from 'react-router-dom';
 import { Menu, X, User, Heart, Search, LogOut, Package } from 'lucide-react';
+import logoImg from '@/assert/logo.png';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import {
@@ -144,15 +145,9 @@ const Header = () => {
             </button>
 
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-2">
-              <div className="flex flex-col items-center">
-                <span className="font-serif text-2xl md:text-3xl font-semibold text-foreground tracking-wide">
-                  Mahamitra
-                </span>
-                <span className="text-xs text-muted-foreground tracking-[0.3em] uppercase font-sans">
-                  Boutique
-                </span>
-              </div>
+            <Link to="/" className="flex items-center gap-3">
+              <img src={logoImg} alt="Mahamitra Logo" className="h-12 w-auto" />
+              <span className="font-serif text-xl md:text-2xl font-semibold text-foreground tracking-wide">Mahamitra</span>
             </Link>
 
             {/* Desktop Navigation */}

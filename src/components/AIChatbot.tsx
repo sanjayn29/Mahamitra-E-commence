@@ -120,7 +120,7 @@ const AIChatbot = () => {
       id: 'welcome',
       role: 'assistant',
       content:
-        'Hi! 👋 Welcome to **Mahamitra Boutique**!\n\nI\'m your AI Shopping Assistant. I can help you with:\n\n🛍️ Find products — "Sarees under ₹5000"\n🎨 Filter by color — "Blue kurtas"\n📍 Store info — "Address", "Phone", "Email"\n💰 Budget search — "Products above ₹3000"\n\nTap a suggestion below or type your question!',
+        'Hi! 👋 Welcome to **Mahamitra**!\n\nI\'m your AI Shopping Assistant. I can help you with:\n\n🛍️ Find products — "Sarees under ₹5000"\n🎨 Filter by color — "Blue kurtas"\n📍 Store info — "Address", "Phone", "Email"\n💰 Budget search — "Products above ₹3000"\n\nTap a suggestion below or type your question!',
       timestamp: new Date(),
     },
   ]);

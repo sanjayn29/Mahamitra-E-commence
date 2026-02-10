@@ -19,7 +19,7 @@ const AboutPage = () => {
             <span className="italic">Modern Elegance</span>
           </h1>
           <p className="text-white/80 font-sans text-lg max-w-2xl mx-auto">
-            For over a decade, Mahamitra Boutique has been celebrating the grace and beauty
+            For over a decade, Mahamitra has been celebrating the grace and beauty
             of Indian women through exquisite handcrafted apparel.
           </p>
         </div>
@@ -37,9 +37,9 @@ const AboutPage = () => {
                 A Dream Woven with Love
               </h2>
               <p className="text-muted-foreground font-sans leading-relaxed">
-                Mahamitra Boutique was born from a passion to preserve India's rich textile
+                Mahamitra was born from a passion to preserve India's rich textile
                 heritage while embracing contemporary fashion. Founded in 2014, we started
-                as a small family-owned boutique in the heart of Coimbatore, Tamil Nadu, with a vision to
+                as a small family-owned fashion house in the heart of Coimbatore, Tamil Nadu, with a vision to
                 bring the finest handcrafted apparel to women who appreciate quality and elegance.
               </p>
               <p className="text-muted-foreground font-sans leading-relaxed">
@@ -55,7 +55,7 @@ const AboutPage = () => {
             <div className="relative">
               <img
                 src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800"
-                alt="Boutique story"
+                alt="Mahamitra story"
                 className="rounded-2xl shadow-luxe-lg"
               />
               <div className="absolute -bottom-6 -left-6 bg-accent text-white p-6 rounded-xl shadow-lg hidden md:block">

@@ -1,6 +1,6 @@
-# Mahamitra - Luxury Women's Apparel Boutique
+# Mahamitra - Luxury Women's Apparel
 
-Mahamitra is a premium e-commerce platform dedicated to exquisite women's textiles, ethnic wear, and luxury fashion. Our boutique offers a curated collection of silk sarees, designer apparel, and handcrafted fabrics that blend traditional craftsmanship with modern aesthetics.
+Mahamitra is a premium e-commerce platform dedicated to exquisite women's textiles, ethnic wear, and luxury fashion. We offer a curated collection of silk sarees, designer apparel, and handcrafted fabrics that blend traditional craftsmanship with modern aesthetics.
 
 ## Features
 
@@ -61,4 +61,4 @@ The project uses a structured architecture:
 This project is proprietary and confidential.
 
 ---
-© 2026 Mahamitra Boutique. All rights reserved.
+© 2026 Mahamitra. All rights reserved.
