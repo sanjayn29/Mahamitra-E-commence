@@ -20,6 +20,7 @@ import ProfilePage from "./pages/ProfilePage";
 import FavoritesPage from "./pages/FavoritesPage";
 import OrdersPage from "./pages/OrdersPage";
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
+import AIChatbot from "./components/AIChatbot";
 import AdminLoginPage from "./pages/admin/AdminLoginPage";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import AddProductPage from "./pages/admin/AddProductPage";
@@ -65,6 +66,7 @@ const App = () => (
               </Route>
               <Route path="*" element={<NotFound />} />
               </Routes>
+              <AIChatbot />
             </BrowserRouter>
             </FavoritesProvider>
           </CartProvider>
