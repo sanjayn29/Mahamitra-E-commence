@@ -1,15 +1,173 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Sparkles, Truck, RefreshCw, Shield, Loader2 } from 'lucide-react';
+import {
+  ArrowRight,
+  Sparkles,
+  Truck,
+  RefreshCw,
+  Shield,
+  Loader2,
+  Star,
+  Clock,
+  Tag,
+  Heart,
+  ShoppingBag,
+  ChevronLeft,
+  ChevronRight,
+  TrendingUp,
+  Zap,
+  Gift,
+  Crown,
+  BadgePercent,
+} from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
 import ProductCard from '@/components/ProductCard';
 import { Button } from '@/components/ui/button';
-import { fetchAllProducts, getCategoriesWithCounts, EnhancedProduct } from '@/services/productService';
+import { Badge } from '@/components/ui/badge';
+import {
+  fetchAllProducts,
+  fetchProductsByCategory,
+  getCategoriesWithCounts,
+  EnhancedProduct,
+} from '@/services/productService';
 
+/* ─── Animated Counter Widget ─── */
+const AnimatedCounter = ({ end, label, suffix = '' }: { end: number; label: string; suffix?: string }) => {
+  const [count, setCount] = useState(0);
+  const ref = useRef<HTMLDivElement>(null);
+  const counted = useRef(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !counted.current) {
+          counted.current = true;
+          let start = 0;
+          const duration = 2000;
+          const step = Math.ceil(end / (duration / 16));
+          const timer = setInterval(() => {
+            start += step;
+            if (start >= end) {
+              setCount(end);
+              clearInterval(timer);
+            } else {
+              setCount(start);
+            }
+          }, 16);
+        }
+      },
+      { threshold: 0.3 }
+    );
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [end]);
+
+  return (
+    <div ref={ref} className="text-center">
+      <p className="font-serif text-3xl md:text-4xl font-bold text-white">
+        {count.toLocaleString()}{suffix}
+      </p>
+      <p className="text-white/70 font-sans text-sm mt-1">{label}</p>
+    </div>
+  );
+};
+
+/* ─── Scrollable Product Row ─── */
+const ProductScrollRow = ({ products, loading }: { products: EnhancedProduct[]; loading: boolean }) => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const scroll = (dir: 'left' | 'right') => {
+    if (!scrollRef.current) return;
+    const amount = 320;
+    scrollRef.current.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' });
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-16">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground font-sans">Loading products...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (products.length === 0) {
+    return (
+      <p className="text-center text-muted-foreground py-12 font-sans">
+        No products available yet. Check back soon!
+      </p>
+    );
+  }
+
+  return (
+    <div className="relative group/scroll">
+      <button
+        onClick={() => scroll('left')}
+        className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-background/90 backdrop-blur-sm shadow-lg rounded-full p-2 opacity-0 group-hover/scroll:opacity-100 transition-opacity hover:bg-background hidden md:flex"
+      >
+        <ChevronLeft size={20} />
+      </button>
+      <div
+        ref={scrollRef}
+        className="flex gap-5 overflow-x-auto scroll-smooth pb-4 snap-x snap-mandatory scrollbar-hide"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        {products.map((product) => (
+          <div key={product.id} className="min-w-[260px] max-w-[260px] snap-start flex-shrink-0">
+            <ProductCard product={product} />
+          </div>
+        ))}
+      </div>
+      <button
+        onClick={() => scroll('right')}
+        className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-background/90 backdrop-blur-sm shadow-lg rounded-full p-2 opacity-0 group-hover/scroll:opacity-100 transition-opacity hover:bg-background hidden md:flex"
+      >
+        <ChevronRight size={20} />
+      </button>
+    </div>
+  );
+};
+
+/* ─── Section Header ─── */
+const SectionHeader = ({
+  icon: Icon,
+  badge,
+  title,
+  subtitle,
+  action,
+}: {
+  icon?: React.ElementType;
+  badge?: string;
+  title: string;
+  subtitle: string;
+  action?: React.ReactNode;
+}) => (
+  <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
+    <div>
+      {badge && (
+        <span className="inline-flex items-center gap-1.5 text-xs font-sans font-semibold uppercase tracking-widest text-primary mb-2">
+          {Icon && <Icon size={14} />}
+          {badge}
+        </span>
+      )}
+      <h2 className="font-serif text-3xl md:text-4xl font-semibold">{title}</h2>
+      <p className="text-muted-foreground font-sans mt-1">{subtitle}</p>
+    </div>
+    {action}
+  </div>
+);
+
+/* ═══════════════════════════════════════════
+   HOME PAGE
+   ═══════════════════════════════════════════ */
 const HomePage = () => {
-  const [featuredProducts, setFeaturedProducts] = useState<EnhancedProduct[]>([]);
-  const [newProducts, setNewProducts] = useState<EnhancedProduct[]>([]);
+  const [allProducts, setAllProducts] = useState<EnhancedProduct[]>([]);
+  const [womenProducts, setWomenProducts] = useState<EnhancedProduct[]>([]);
+  const [girlsProducts, setGirlsProducts] = useState<EnhancedProduct[]>([]);
+  const [babiesProducts, setBabiesProducts] = useState<EnhancedProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'all' | 'women' | 'girls' | 'babies'>('all');
   const [categoryCounts, setCategoryCounts] = useState({
     women: { count: 0 },
     girls: { count: 0 },
@@ -20,25 +178,17 @@ const HomePage = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [products, counts] = await Promise.all([
+        const [products, women, girls, babies, counts] = await Promise.all([
           fetchAllProducts(),
+          fetchProductsByCategory('women'),
+          fetchProductsByCategory('girls'),
+          fetchProductsByCategory('babies'),
           getCategoriesWithCounts(),
         ]);
-
-        // Get featured products (random selection for now)
-        const shuffledProducts = [...products].sort(() => 0.5 - Math.random());
-        setFeaturedProducts(shuffledProducts.slice(0, 8));
-
-        // Get newest products (by creation date or recent products)
-        const newestProducts = [...products]
-          .sort((a, b) => {
-            const dateA = new Date(a.created_at || '').getTime();
-            const dateB = new Date(b.created_at || '').getTime();
-            return dateB - dateA;
-          })
-          .slice(0, 8);
-        setNewProducts(newestProducts);
-
+        setAllProducts(products);
+        setWomenProducts(women);
+        setGirlsProducts(girls);
+        setBabiesProducts(babies);
         setCategoryCounts(counts);
       } catch (error) {
         console.error('Error fetching homepage data:', error);
@@ -46,26 +196,57 @@ const HomePage = () => {
         setLoading(false);
       }
     };
-
     fetchData();
   }, []);
 
+  // Derived product sets (all from real DB data)
+  const featuredProducts = [...allProducts].sort(() => 0.5 - Math.random()).slice(0, 12);
+  const newArrivals = [...allProducts]
+    .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
+    .slice(0, 12);
+  const bestDeals = [...allProducts]
+    .filter((p) => p.cost && p.cost !== p.price)
+    .slice(0, 12);
+  const totalProducts =
+    categoryCounts.women.count + categoryCounts.girls.count + categoryCounts.babies.count;
+
+  const tabbedProducts =
+    activeTab === 'women'
+      ? womenProducts
+      : activeTab === 'girls'
+      ? girlsProducts
+      : activeTab === 'babies'
+      ? babiesProducts
+      : allProducts;
+
   const categories = [
-    { 
-      id: 'women', 
-      name: 'Women Collection', 
-      description: `Elegant sarees & traditional wear (${categoryCounts.women.count} items)` 
+    {
+      id: 'women' as const,
+      name: 'Women',
+      fullName: 'Women Collection',
+      description: `Elegant sarees & traditional wear`,
+      count: categoryCounts.women.count,
+      gradient: 'from-rose-500 to-pink-600',
+      icon: Crown,
     },
-    { 
-      id: 'girls', 
-      name: 'Girls Collection', 
-      description: `Stylish outfits for young ladies (${categoryCounts.girls.count} items)` 
+    {
+      id: 'girls' as const,
+      name: 'Girls',
+      fullName: 'Girls Collection',
+      description: `Stylish outfits for young ladies`,
+      count: categoryCounts.girls.count,
+      gradient: 'from-violet-500 to-purple-600',
+      icon: Star,
     },
-    { 
-      id: 'babies', 
-      name: 'Baby Collection', 
-      description: `Adorable clothing for little ones (${categoryCounts.babies.count} items)` 
-    }
+    {
+      id: 'babies' as const,
+      name: 'Babies',
+      fullName: 'Baby Collection',
+      description: `Adorable clothing for little ones`,
+      count: categoryCounts.babies.count,
+      gradient: 'from-amber-400 to-orange-500',
+      icon: Heart,
+    },
   ];
 
   return (
@@ -129,180 +310,306 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Categories Section */}
-      <section className="py-20 bg-muted">
+      {/* ══════════════ TRUST BAR ══════════════ */}
+      <section className="py-6 bg-background border-b border-border">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12 animate-slide-up">
-            <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-4">
-              Shop by Category
-            </h2>
-            <p className="text-muted-foreground font-sans max-w-2xl mx-auto">
-              From elegant sarees to adorable baby outfits, find the perfect style for every generation
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {categories.map((category, index) => (
-              <Link
-                key={category.id}
-                to={`/shop?category=${category.id}`}
-                className="group relative h-96 rounded-2xl overflow-hidden shadow-luxe hover:shadow-luxe-lg transition-all duration-500 hover-lift"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <div
-                  className={`absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110 ${
-                    category.id === 'women'
-                      ? "bg-[url('https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800')]"
-                      : category.id === 'girls'
-                      ? "bg-[url('https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?w=800')]"
-                      : "bg-[url('https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=800')]"
-                  }`}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-foreground/80 via-foreground/30 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                  <h3 className="font-serif text-2xl font-semibold mb-2">{category.name}</h3>
-                  <p className="font-sans text-white/80 text-sm mb-4">{category.description}</p>
-                  <span className="inline-flex items-center gap-2 text-sm font-sans font-medium group-hover:text-primary transition-colors">
-                    Explore Collection
-                    <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-                  </span>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { icon: Truck, title: 'Free Shipping', desc: 'Orders above ₹2,999' },
+              { icon: RefreshCw, title: 'Easy Returns', desc: '7-day hassle-free' },
+              { icon: Shield, title: 'Secure Payment', desc: '100% secure checkout' },
+              { icon: Sparkles, title: 'Premium Quality', desc: 'Handpicked fabrics' },
+            ].map((f, i) => (
+              <div key={i} className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors">
+                <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center flex-shrink-0">
+                  <f.icon size={18} className="text-white" />
                 </div>
-              </Link>
+                <div>
+                  <p className="font-sans text-sm font-semibold">{f.title}</p>
+                  <p className="font-sans text-xs text-muted-foreground">{f.desc}</p>
+                </div>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Featured Products Section */}
-      <section className="py-20">
+      {/* ══════════════ CATEGORY CARDS ══════════════ */}
+      <section className="py-16 bg-muted/50">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12">
-            <div>
-              <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-2">
-                Featured Products
-              </h2>
-              <p className="text-muted-foreground font-sans">
-                Handpicked items from our collection
-              </p>
-            </div>
-            <Button asChild variant="outline" className="mt-4 md:mt-0">
-              <Link to="/shop">
-                View All
-                <ArrowRight size={16} className="ml-2" />
-              </Link>
-            </Button>
+          <SectionHeader
+            icon={Crown}
+            badge="Collections"
+            title="Shop by Category"
+            subtitle="Find the perfect style for every generation"
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {categories.map((cat) => {
+              const catProducts =
+                cat.id === 'women' ? womenProducts : cat.id === 'girls' ? girlsProducts : babiesProducts;
+              const previewImg = catProducts[0]?.images[0] || catProducts[0]?.image;
+
+              return (
+                <Link
+                  key={cat.id}
+                  to={`/shop?category=${cat.id}`}
+                  className="group relative h-[420px] rounded-2xl overflow-hidden shadow-luxe hover:shadow-luxe-lg transition-all duration-500 hover-lift"
+                >
+                  {previewImg ? (
+                    <img
+                      src={previewImg}
+                      alt={cat.fullName}
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    />
+                  ) : (
+                    <div className={`absolute inset-0 bg-gradient-to-br ${cat.gradient}`} />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+
+                  {/* Count badge */}
+                  <div className="absolute top-4 right-4">
+                    <Badge className="bg-white/20 backdrop-blur-sm text-white border-0">
+                      {cat.count} items
+                    </Badge>
+                  </div>
+
+                  <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+                    <div className="flex items-center gap-2 mb-2">
+                      <cat.icon size={18} />
+                      <span className="font-sans text-sm uppercase tracking-widest opacity-80">
+                        {cat.name}
+                      </span>
+                    </div>
+                    <h3 className="font-serif text-2xl font-semibold mb-2">{cat.fullName}</h3>
+                    <p className="font-sans text-white/70 text-sm mb-4">{cat.description}</p>
+                    <span className="inline-flex items-center gap-2 text-sm font-sans font-medium group-hover:gap-3 transition-all">
+                      Explore Collection
+                      <ArrowRight size={16} />
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════ FEATURED – TABBED ══════════════ */}
+      <section className="py-16">
+        <div className="container mx-auto px-4">
+          <SectionHeader
+            icon={TrendingUp}
+            badge="Trending Now"
+            title="Featured Products"
+            subtitle="Handpicked items loved by our customers"
+            action={
+              <Button asChild variant="outline" className="mt-4 md:mt-0">
+                <Link to="/shop">
+                  View All <ArrowRight size={16} className="ml-2" />
+                </Link>
+              </Button>
+            }
+          />
+
+          {/* Tabs */}
+          <div className="flex flex-wrap gap-2 mb-8">
+            {(['all', 'women', 'girls', 'babies'] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-5 py-2 rounded-full text-sm font-sans font-medium transition-all ${
+                  activeTab === tab
+                    ? 'gradient-primary text-white shadow-md'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                }`}
+              >
+                {tab === 'all' ? 'All' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
           </div>
 
           {loading ? (
             <div className="flex justify-center items-center py-16">
-              <div className="flex flex-col items-center gap-4">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-muted-foreground font-sans">Loading products...</p>
-              </div>
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {featuredProducts.slice(0, 4).map((product) => (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+              {tabbedProducts.slice(0, 8).map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
+            </div>
+          )}
+
+          {!loading && tabbedProducts.length > 8 && (
+            <div className="text-center mt-10">
+              <Button asChild size="lg" variant="outline">
+                <Link to="/shop">
+                  See All {tabbedProducts.length} Products
+                  <ArrowRight size={16} className="ml-2" />
+                </Link>
+              </Button>
             </div>
           )}
         </div>
       </section>
 
-      {/* Promo Banner */}
-      <section className="py-16 bg-gradient-to-r from-accent/10 via-primary/10 to-secondary/10">
-        <div className="container mx-auto px-4 text-center">
-          <div className="border-elegant rounded-2xl bg-background p-8 md:p-12 shadow-luxe max-w-4xl mx-auto">
-            <span className="inline-block text-accent font-sans text-sm uppercase tracking-wider mb-4">
-              Limited Time Offer
+      {/* ══════════════ PROMO BANNER ══════════════ */}
+      <section className="py-0">
+        <div className="relative overflow-hidden bg-gradient-to-r from-primary via-secondary to-primary">
+          <div className="absolute inset-0 opacity-10"
+            style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '30px 30px' }}
+          />
+          <div className="container mx-auto px-4 py-12 md:py-16 relative z-10">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+              <div className="text-center md:text-left">
+                <div className="flex items-center gap-2 justify-center md:justify-start mb-3">
+                  <BadgePercent size={20} className="text-yellow-300" />
+                  <span className="text-yellow-300 font-sans text-sm font-semibold uppercase tracking-wider">
+                    Limited Time Offer
+                  </span>
+                </div>
+                <h2 className="font-serif text-3xl md:text-4xl font-bold text-white mb-3">
+                  Flat ₹200 Off on First Order
+                </h2>
+                <p className="text-white/80 font-sans max-w-md">
+                  Use code{' '}
+                  <span className="inline-block bg-white/20 backdrop-blur-sm px-3 py-1 rounded-md font-bold text-white">
+                    MAHAMITRA20
+                  </span>{' '}
+                  at checkout. Valid on orders above ₹1,999.
+                </p>
+              </div>
+              <Button asChild size="lg" className="bg-white text-primary hover:bg-white/90 font-sans shadow-xl px-10 text-base">
+                <Link to="/shop">
+                  <Gift size={18} className="mr-2" />
+                  Claim Offer
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════ NEW ARRIVALS (scrollable) ══════════════ */}
+      <section className="py-16 bg-muted/50">
+        <div className="container mx-auto px-4">
+          <SectionHeader
+            icon={Zap}
+            badge="Just Landed"
+            title="New Arrivals"
+            subtitle="The freshest styles added to our collection"
+            action={
+              <Button asChild variant="outline" className="mt-4 md:mt-0">
+                <Link to="/shop">
+                  View All <ArrowRight size={16} className="ml-2" />
+                </Link>
+              </Button>
+            }
+          />
+          <ProductScrollRow products={newArrivals} loading={loading} />
+        </div>
+      </section>
+
+      {/* ══════════════ DEALS / BEST VALUE ══════════════ */}
+      {bestDeals.length > 0 && (
+        <section className="py-16">
+          <div className="container mx-auto px-4">
+            <SectionHeader
+              icon={Tag}
+              badge="Best Value"
+              title="Deals & Offers"
+              subtitle="Great styles at amazing prices"
+              action={
+                <Button asChild variant="outline" className="mt-4 md:mt-0">
+                  <Link to="/shop">
+                    View All <ArrowRight size={16} className="ml-2" />
+                  </Link>
+                </Button>
+              }
+            />
+            <ProductScrollRow products={bestDeals} loading={loading} />
+          </div>
+        </section>
+      )}
+
+      {/* ══════════════ PER-CATEGORY SHOWCASES ══════════════ */}
+      {([
+        { label: 'Women', products: womenProducts, cat: 'women' },
+        { label: 'Girls', products: girlsProducts, cat: 'girls' },
+        { label: 'Babies', products: babiesProducts, cat: 'babies' },
+      ] as const).map(
+        (sec) =>
+          sec.products.length > 0 && (
+            <section key={sec.cat} className="py-16 even:bg-muted/50">
+              <div className="container mx-auto px-4">
+                <SectionHeader
+                  icon={ShoppingBag}
+                  badge={`${sec.label} Collection`}
+                  title={`Top ${sec.label} Picks`}
+                  subtitle={`Explore our best ${sec.label.toLowerCase()} products`}
+                  action={
+                    <Button asChild variant="outline" className="mt-4 md:mt-0">
+                      <Link to={`/shop?category=${sec.cat}`}>
+                        View All <ArrowRight size={16} className="ml-2" />
+                      </Link>
+                    </Button>
+                  }
+                />
+                <ProductScrollRow products={sec.products} loading={loading} />
+              </div>
+            </section>
+          )
+      )}
+
+      {/* ══════════════ WHY CHOOSE US ══════════════ */}
+      <section className="py-16 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <span className="inline-flex items-center gap-1.5 text-xs font-sans font-semibold uppercase tracking-widest text-primary mb-2">
+              <Shield size={14} />
+              Why Mahamitra
             </span>
-            <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-4">
-              Flat Rs : 200 Off on First Order
+            <h2 className="font-serif text-3xl md:text-4xl font-semibold">
+              The Mahamitra Promise
             </h2>
-            <p className="text-muted-foreground font-sans mb-6 max-w-xl mx-auto">
-              Use code <span className="font-semibold text-primary">MAHAMITRA20</span> at checkout.
-              Valid on orders above ₹1,999.
-            </p>
-            <Button asChild size="lg" className="gradient-primary text-primary-foreground">
-              <Link to="/shop">Shop Now</Link>
-            </Button>
           </div>
-        </div>
-      </section>
-
-      {/* New Arrivals Section */}
-      <section className="py-20 bg-muted">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12">
-            <div>
-              <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-2">
-                New Arrivals
-              </h2>
-              <p className="text-muted-foreground font-sans">
-                Fresh styles just landed
-              </p>
-            </div>
-            <Button asChild variant="outline" className="mt-4 md:mt-0">
-              <Link to="/shop">
-                View All
-                <ArrowRight size={16} className="ml-2" />
-              </Link>
-            </Button>
-          </div>
-
-          {loading ? (
-            <div className="flex justify-center items-center py-16">
-              <div className="flex flex-col items-center gap-4">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-muted-foreground font-sans">Loading new arrivals...</p>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {newProducts.slice(0, 4).map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="py-16 border-t border-border">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               {
                 icon: Truck,
                 title: 'Free Shipping',
-                description: 'On orders above ₹2,999',
+                description: 'Free delivery on orders above ₹2,999 across India',
+                color: 'from-blue-500 to-cyan-500',
               },
               {
                 icon: RefreshCw,
                 title: 'Easy Returns',
-                description: '7-day hassle-free returns',
+                description: '7-day hassle-free return & exchange policy',
+                color: 'from-green-500 to-emerald-500',
               },
               {
                 icon: Shield,
                 title: 'Secure Payment',
-                description: '100% secure transactions',
+                description: 'Razorpay-powered 100% secure transactions',
+                color: 'from-violet-500 to-purple-500',
               },
               {
                 icon: Sparkles,
                 title: 'Premium Quality',
-                description: 'Handpicked fabrics & designs',
+                description: 'Handpicked fabrics & meticulously crafted designs',
+                color: 'from-amber-500 to-orange-500',
               },
             ].map((feature, index) => (
               <div
                 key={index}
-                className="text-center p-6 rounded-xl hover:bg-muted transition-colors"
+                className="relative group text-center p-8 rounded-2xl bg-muted/50 border border-border/50 hover:border-primary/20 hover:shadow-luxe transition-all duration-300"
               >
-                <div className="w-14 h-14 rounded-full gradient-primary flex items-center justify-center mx-auto mb-4">
+                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${feature.color} flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform`}>
                   <feature.icon size={24} className="text-white" />
                 </div>
-                <h3 className="font-serif text-lg font-medium mb-2">{feature.title}</h3>
-                <p className="text-muted-foreground font-sans text-sm">
+                <h3 className="font-serif text-lg font-semibold mb-2">{feature.title}</h3>
+                <p className="text-muted-foreground font-sans text-sm leading-relaxed">
                   {feature.description}
                 </p>
               </div>
@@ -311,33 +618,64 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Instagram Section */}
-      <section className="py-16 bg-muted">
+      {/* ══════════════ INSTAGRAM / CTA ══════════════ */}
+      <section className="py-16 bg-muted/50">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-4">
+          <span className="inline-flex items-center gap-1.5 text-xs font-sans font-semibold uppercase tracking-widest text-primary mb-2">
+            <Heart size={14} />
+            Community
+          </span>
+          <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-3">
             Follow Us on Instagram
           </h2>
-          <p className="text-muted-foreground font-sans mb-8">
-            @mahamitraboutique | Join our community of elegant women
+          <p className="text-muted-foreground font-sans mb-10 max-w-lg mx-auto">
+            @mahamitraboutique – Join our community and get styling inspiration
           </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {[1, 2, 3, 4, 5, 6].map((_, index) => (
-              <a
-                key={index}
-                href="https://www.sanjayn.me"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="aspect-square rounded-lg overflow-hidden group"
+
+          {/* Use real product images from the store */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {allProducts.slice(0, 6).map((product, index) => (
+              <Link
+                key={product.id || index}
+                to={`/product/${product.id}`}
+                className="aspect-square rounded-xl overflow-hidden group relative"
               >
                 <img
-                  src={`https://images.unsplash.com/photo-${
-                    ['1610030469983-98e550d6193c', '1583391733956-3750e0ff4e8b', '1518831959646-742c3a14ebf7', '1522771739844-6a9f6d5f14af', '1572804013309-59a88b7e92f1', '1594736797933-d0501ba2fe65'][index]
-                  }?w=300`}
-                  alt={`Instagram ${index + 1}`}
+                  src={product.images[0] || product.image}
+                  alt={product.name}
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                 />
-              </a>
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                  <ShoppingBag
+                    size={24}
+                    className="text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                  />
+                </div>
+              </Link>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════ NEWSLETTER CTA ══════════════ */}
+      <section className="py-16 bg-gradient-to-br from-primary/5 via-secondary/5 to-primary/5">
+        <div className="container mx-auto px-4">
+          <div className="max-w-2xl mx-auto text-center">
+            <Gift size={32} className="mx-auto text-primary mb-4" />
+            <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-3">
+              Don't Miss Out
+            </h2>
+            <p className="text-muted-foreground font-sans mb-8">
+              Be the first to know about new arrivals, exclusive offers, and styling tips.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button asChild size="lg" className="gradient-primary text-white font-sans px-10">
+                <Link to="/shop">Start Shopping</Link>
+              </Button>
+              <Button asChild size="lg" variant="outline" className="font-sans px-10">
+                <Link to="/about">Learn About Us</Link>
+              </Button>
+            </div>
           </div>
         </div>
       </section>
