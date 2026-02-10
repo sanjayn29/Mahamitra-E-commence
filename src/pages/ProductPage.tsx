@@ -42,6 +42,37 @@ const ProductPage = () => {
     fetchRelated();
   }, [product]);
 
+  const handleShare = async () => {
+    const shareUrl = `https://www.mahamitra.app/product/${product?.id}`;
+    const shareText = `Check out ${product?.name} at Mahamitra - Luxury Women's Apparel`;
+
+    try {
+      // Check if Web Share API is available
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Mahamitra',
+          text: shareText,
+          url: shareUrl,
+        });
+      } else {
+        // Fallback: Copy to clipboard
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success('Link copied to clipboard!');
+      }
+    } catch (error: any) {
+      if (error.name !== 'AbortError') {
+        console.error('Error sharing:', error);
+        // Fallback to clipboard
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+          toast.success('Link copied to clipboard!');
+        } catch {
+          toast.error('Failed to share');
+        }
+      }
+    }
+  };
+
   if (productLoading) {
     return (
       <MainLayout>
@@ -284,7 +315,12 @@ const ProductPage = () => {
               />
 
               {/* Share */}
-              <Button variant="outline" size="icon" className="h-12 w-12">
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className="h-12 w-12"
+                onClick={handleShare}
+              >
                 <Share2 size={20} />
               </Button>
             </div>
