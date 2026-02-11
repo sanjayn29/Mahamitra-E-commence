@@ -24,8 +24,8 @@ const AboutPage = () => {
             <span className="italic">Modern Elegance</span>
           </h1>
           <p className="text-white/80 font-sans text-lg max-w-2xl mx-auto">
-            For over a decade, Mahamitra has been celebrating the grace and beauty
-            of Indian women through exquisite handcrafted apparel.
+            For over a decade, Mahamitra has been a leading <strong>boutique fashion India</strong> destination, celebrating the grace and beauty
+            of women through exquisite handcrafted apparel.
           </p>
         </div>
       </section>

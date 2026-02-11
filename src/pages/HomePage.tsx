@@ -274,7 +274,7 @@ const HomePage = () => {
             </h1>
             <p className="text-lg md:text-xl text-white/90 font-sans mb-8 max-w-lg">
               Discover exquisite handcrafted apparel for women, girls, and babies.
-              From timeless sarees to contemporary designs – crafted with love.
+              From <strong>boutique fashion India</strong> to timeless sarees to contemporary <strong>women clothing online</strong> – crafted with love.
             </p>
             <div className="flex flex-wrap gap-4">
               <Button

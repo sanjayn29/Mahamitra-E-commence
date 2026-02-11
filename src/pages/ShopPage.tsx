@@ -200,8 +200,8 @@ const ShopPage = () => {
   return (
     <MainLayout>
       <SEO
-        title="Shop Women, Girls & Baby Clothing | Mahamitra Boutique"
-        description="Browse our complete collection of women's sarees, kurtis, girls' dresses, and soft baby clothes. Find your perfect style at Mahamitra Boutique."
+        title="Shop Women Clothing Online & Baby Fashion | Mahamitra Boutique"
+        description="Browse our complete collection of women clothing online, girls fashion dresses, and soft baby clothing store items. Find your perfect style at Mahamitra Boutique."
       />
       
       {/* Hero */}
