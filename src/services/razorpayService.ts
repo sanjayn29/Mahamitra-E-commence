@@ -39,6 +39,7 @@ interface OrderData {
   quantity: number;
   price: number;
   total: number;
+  discount: number;
   customerName: string;
   customerEmail: string;
   customerPhone: string;

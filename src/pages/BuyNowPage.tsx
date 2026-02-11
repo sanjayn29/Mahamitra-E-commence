@@ -162,6 +162,7 @@ const BuyNowPage = () => {
         quantity: formData.quantity,
         price: product!.price,
         total: total,
+        discount: discount,
         customerName: formData.fullName,
         customerEmail: formData.email,
         customerPhone: formData.phoneNumber,

@@ -111,6 +111,9 @@ const renderHeader = async (doc: jsPDF, y: number): Promise<number> => {
 
 // Render title
 const renderTitle = (doc: jsPDF, y: number): number => {
+  // Add extra space above title
+  y += 3;
+
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(18);
   doc.setTextColor(240, 131, 186); // Pink
@@ -119,7 +122,7 @@ const renderTitle = (doc: jsPDF, y: number): number => {
   const textWidth = doc.getTextWidth(title);
   doc.text(title, (pageWidth - textWidth) / 2, y);
 
-  return y + 8;
+  return y + 10;
 };
 
 // Render order information
@@ -127,25 +130,53 @@ const renderOrderInfo = (doc: jsPDF, order: OrderData, y: number): number => {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   doc.setTextColor(44, 44, 44);
+  const pageWidth = doc.internal.pageSize.getWidth();
 
+  // Order ID (centered)
   doc.setFont('helvetica', 'bold');
-  doc.text('Order ID:', 20, y);
+  const orderIdLabel = 'Order ID: ';
+  const orderIdValue = formatOrderId(order.id);
+  const orderIdFull = orderIdLabel + orderIdValue;
+  const orderIdWidth = doc.getTextWidth(orderIdFull);
+  const orderIdX = (pageWidth - orderIdWidth) / 2;
+  doc.text(orderIdLabel, orderIdX, y);
   doc.setFont('helvetica', 'normal');
-  doc.text(formatOrderId(order.id), 50, y);
+  doc.text(orderIdValue, orderIdX + doc.getTextWidth(orderIdLabel), y);
 
+  // Date (centered)
   y += 5;
   doc.setFont('helvetica', 'bold');
-  doc.text('Date:', 20, y);
+  const dateLabel = 'Date: ';
+  const dateValue = formatReceiptDate(order.created_at);
+  const dateFull = dateLabel + dateValue;
+  const dateWidth = doc.getTextWidth(dateFull);
+  const dateX = (pageWidth - dateWidth) / 2;
+  doc.text(dateLabel, dateX, y);
   doc.setFont('helvetica', 'normal');
-  doc.text(formatReceiptDate(order.created_at), 50, y);
+  doc.text(dateValue, dateX + doc.getTextWidth(dateLabel), y);
 
+  // Payment ID (centered, if exists)
   if (order.payment_id) {
     y += 5;
     doc.setFont('helvetica', 'bold');
-    doc.text('Payment ID:', 20, y);
+    const paymentLabel = 'Payment ID: ';
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
-    doc.text(order.payment_id, 50, y);
+    const paymentValue = order.payment_id;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    const paymentLabelWidth = doc.getTextWidth(paymentLabel);
+    doc.setFontSize(9);
+    const paymentValueWidth = doc.getTextWidth(paymentValue);
+    const paymentFullWidth = paymentLabelWidth + paymentValueWidth;
+    const paymentX = (pageWidth - paymentFullWidth) / 2;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text(paymentLabel, paymentX, y);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text(paymentValue, paymentX + paymentLabelWidth, y);
     doc.setFontSize(10);
   }
 
@@ -250,29 +281,34 @@ const renderTotals = (doc: jsPDF, order: OrderData, y: number): number => {
 
   // Subtotal
   const subtotal = order.price * order.quantity;
-  doc.text('Subtotal:', 130, y);
-  doc.text(formatCurrency(subtotal), 180, y, { align: 'right' });
+  doc.text('Subtotal:', 120, y);
+  const subtotalText = formatCurrency(subtotal);
+  const subtotalWidth = doc.getTextWidth(subtotalText);
+  doc.text(subtotalText, 190 - subtotalWidth, y);
   y += 5;
 
-  // Discount (if applicable)
-  if (order.discount && order.discount > 0) {
-    doc.text('Discount:', 130, y);
-    doc.text('-' + formatCurrency(order.discount), 180, y, { align: 'right' });
-    y += 5;
-  }
+  // Discount Coupon (calculate as subtotal - total_amount)
+  const discountAmount = subtotal - order.total_amount;
+  doc.text('Discount Coupon:', 120, y);
+  const discountText = discountAmount > 0 ? '-' + formatCurrency(discountAmount) : formatCurrency(0);
+  const discountWidth = doc.getTextWidth(discountText);
+  doc.text(discountText, 190 - discountWidth, y);
+  y += 5;
 
   // Line before total
   doc.setDrawColor(240, 131, 186); // Pink
   doc.setLineWidth(0.5);
-  doc.line(130, y, 190, y);
+  doc.line(120, y, 190, y);
   y += 6;
 
   // Total (highlighted)
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
   doc.setTextColor(240, 131, 186); // Pink
-  doc.text('TOTAL PAID:', 130, y);
-  doc.text(formatCurrency(order.total_amount), 190, y, { align: 'right' });
+  doc.text('TOTAL PAID:', 120, y);
+  const totalText = formatCurrency(order.total_amount);
+  const totalWidth = doc.getTextWidth(totalText);
+  doc.text(totalText, 190 - totalWidth, y);
 
   return y + 8;
 };
