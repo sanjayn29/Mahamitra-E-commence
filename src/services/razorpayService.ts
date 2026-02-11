@@ -50,7 +50,7 @@ interface OrderData {
 // Initialize Razorpay Payment
 export const initiateRazorpayPayment = (
   orderData: OrderData,
-  onSuccess: (paymentId: string) => void,
+  onSuccess: (paymentId: string, orderId: string) => void,
   onFailure: (error: string) => void
 ) => {
   const razorpayKeyId = import.meta.env.VITE_RAZORPAY_KEY_ID;
@@ -76,9 +76,9 @@ export const initiateRazorpayPayment = (
     handler: async function (response: RazorpayResponse) {
       // Payment successful
       try {
-        // Save order to database
-        await saveOrderToDatabase(orderData, response.razorpay_payment_id);
-        onSuccess(response.razorpay_payment_id);
+        // Save order to database and get the order ID
+        const savedOrder = await saveOrderToDatabase(orderData, response.razorpay_payment_id);
+        onSuccess(response.razorpay_payment_id, savedOrder.id);
       } catch (error) {
         console.error('Error saving order:', error);
         onFailure('Payment successful but order save failed. Contact support with payment ID: ' + response.razorpay_payment_id);

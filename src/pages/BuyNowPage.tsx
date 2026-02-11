@@ -173,15 +173,12 @@ const BuyNowPage = () => {
       // Initiate Razorpay payment
       initiateRazorpayPayment(
         orderData,
-        (paymentId: string) => {
+        (paymentId: string, orderId: string) => {
           // Payment success callback
-          toast.success(`Payment successful! Payment ID: ${paymentId}`);
-          toast.success('Order placed successfully!');
-          
-          // Navigate to home page after 2 seconds
-          setTimeout(() => {
-            navigate('/');
-          }, 2000);
+          toast.success('Payment successful!');
+
+          // Navigate to order success page
+          navigate(`/order-success/${orderId}`);
         },
         (error: string) => {
           // Payment failure callback

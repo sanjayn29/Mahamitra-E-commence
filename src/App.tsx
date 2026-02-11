@@ -19,6 +19,7 @@ import SignupPage from "./pages/SignupPage";
 import ProfilePage from "./pages/ProfilePage";
 import FavoritesPage from "./pages/FavoritesPage";
 import OrdersPage from "./pages/OrdersPage";
+import OrderSuccessPage from "./pages/OrderSuccessPage";
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
 import AIChatbot from "./components/AIChatbot";
 import AdminLoginPage from "./pages/admin/AdminLoginPage";
@@ -55,6 +56,7 @@ const App = () => (
               <Route path="/account" element={<AccountPage />} />
               <Route path="/favorites" element={<FavoritesPage />} />
               <Route path="/orders" element={<OrdersPage />} />
+              <Route path="/order-success/:orderId" element={<OrderSuccessPage />} />
               <Route path="/admin" element={<AdminLoginPage />} />
               <Route element={<ProtectedAdminRoute />}>
                 <Route path="/admin/dashboard" element={<AdminDashboardPage />} />

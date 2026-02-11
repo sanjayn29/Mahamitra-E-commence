@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Package, Truck, CheckCircle, Clock, XCircle, ShoppingBag } from 'lucide-react';
+import { Package, Truck, CheckCircle, Clock, XCircle, ShoppingBag, Download } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import MainLayout from '@/layouts/MainLayout';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
+import { generateReceipt } from '@/services/pdfReceiptService';
 
 interface Order {
   id: string;
@@ -24,6 +25,12 @@ interface Order {
   payment_status: string;
   order_status: string;
   created_at: string;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  delivery_address: string;
+  city: string;
+  pincode: string;
 }
 
 const statusConfig: Record<string, { icon: React.ElementType; color: string; label: string }> = {
@@ -80,6 +87,16 @@ const OrdersPage = () => {
 
   const getStatusInfo = (status: string) => {
     return statusConfig[status] || statusConfig.pending;
+  };
+
+  const handleDownloadReceipt = async (order: Order) => {
+    try {
+      await generateReceipt(order);
+      toast.success('Receipt downloaded successfully!');
+    } catch (error) {
+      console.error('Error generating receipt:', error);
+      toast.error('Failed to generate receipt');
+    }
   };
 
   return (
@@ -157,12 +174,25 @@ const OrdersPage = () => {
                           </div>
 
                           <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                            <p className="text-lg font-semibold">₹{order.total_amount.toFixed(2)}</p>
-                            {order.payment_id && (
-                              <span className="text-xs text-muted-foreground font-mono">
-                                Payment: {order.payment_id}
-                              </span>
-                            )}
+                            <div className="flex-1">
+                              <p className="text-lg font-semibold">₹{order.total_amount.toFixed(2)}</p>
+                              {order.payment_id && (
+                                <span className="text-xs text-muted-foreground font-mono">
+                                  Payment: {order.payment_id}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Download Receipt Button */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDownloadReceipt(order)}
+                              className="text-primary hover:bg-primary/10"
+                            >
+                              <Download size={16} className="mr-1" />
+                              Receipt
+                            </Button>
                           </div>
                         </div>
                       </div>
