@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/sheet';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
+import SEO from '@/components/SEO';
 
 const ShopPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -198,6 +199,11 @@ const ShopPage = () => {
 
   return (
     <MainLayout>
+      <SEO
+        title="Shop Women, Girls & Baby Clothing | Mahamitra Boutique"
+        description="Browse our complete collection of women's sarees, kurtis, girls' dresses, and soft baby clothes. Find your perfect style at Mahamitra Boutique."
+      />
+      
       {/* Hero */}
       <section className="bg-muted py-12">
         <div className="container mx-auto px-4 text-center">

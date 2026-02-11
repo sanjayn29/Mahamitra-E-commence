@@ -10,6 +10,7 @@ import { Comments } from '@/components/Comments';
 import { useProduct } from '@/hooks/useProducts';
 import { fetchProductsByCategory, EnhancedProduct } from '@/services/productService';
 import { toast } from 'sonner';
+import SEO from '@/components/SEO';
 
 const ProductPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -108,6 +109,10 @@ const ProductPage = () => {
 
   return (
     <MainLayout>
+      <SEO
+        title={`${product.name} | Mahamitra Boutique`}
+        description={product.description || `Buy ${product.name} at Mahamitra Boutique. Quality clothing for women and children.`}
+      />
       <div className="container mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm font-sans text-muted-foreground mb-8">

@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabaseClient';
 import MainLayout from '@/layouts/MainLayout';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import SEO from '@/components/SEO';
 
 // This would need to be enhanced to fetch actual product details
 // For now, this is a placeholder structure
@@ -113,6 +114,10 @@ const FavoritesPage = () => {
 
   return (
     <MainLayout>
+      <SEO
+        title="My Favorites | Mahamitra Boutique"
+        description="View your saved items and wishlist at Mahamitra Boutique. Keep track of the styles you love."
+      />
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">

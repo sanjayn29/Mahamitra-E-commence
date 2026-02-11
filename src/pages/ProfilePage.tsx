@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import MainLayout from '@/layouts/MainLayout';
 import { toast } from 'sonner';
+import SEO from '@/components/SEO';
 
 interface OrderSummary {
   total: number;
@@ -135,6 +136,10 @@ const ProfilePage = () => {
 
   return (
     <MainLayout>
+      <SEO
+        title="My Profile | Mahamitra Boutique"
+        description="Manage your Mahamitra Boutique profile, view order history, and update your preferences."
+      />
       <div className="container mx-auto px-4 py-8 min-h-[60vh]">
         <div className="max-w-4xl mx-auto space-y-6">
 

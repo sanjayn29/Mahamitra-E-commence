@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
+import SEO from '@/components/SEO';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -66,6 +67,10 @@ const LoginPage = () => {
 
   return (
     <div className="container mx-auto flex items-center justify-center min-h-screen">
+      <SEO
+        title="Login | Mahamitra Boutique"
+        description="Log in to your Mahamitra Boutique account to track orders, manage your wishlist, and checkout faster."
+      />
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-center">Log In</CardTitle>

@@ -24,6 +24,7 @@ import MainLayout from '@/layouts/MainLayout';
 import ProductCard from '@/components/ProductCard';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import SEO from '@/components/SEO';
 import {
   fetchAllProducts,
   fetchProductsByCategory,
@@ -251,6 +252,10 @@ const HomePage = () => {
 
   return (
     <MainLayout>
+      <SEO
+        title="Mahamitra Boutique | Women, Girls & Baby Clothing"
+        description="Shop elegant women's, girls & baby clothing at Mahamitra Boutique. Soft styles, premium quality, and affordable fashion."
+      />
       {/* Hero Section */}
       <section className="relative min-h-[80vh] flex items-center gradient-primary overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=1920')] bg-cover bg-center opacity-20" />

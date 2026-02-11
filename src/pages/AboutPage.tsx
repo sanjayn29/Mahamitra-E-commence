@@ -2,10 +2,15 @@ import { Heart, Award, Users, Sparkles } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import SEO from '@/components/SEO';
 
 const AboutPage = () => {
   return (
     <MainLayout>
+      <SEO
+        title="About Us | Mahamitra Boutique"
+        description="Learn about Mahamitra Boutique's story, our commitment to quality, and our passion for women's and children's fashion."
+      />
       {/* Hero */}
       <section className="relative py-24 gradient-primary overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=1920')] bg-cover bg-center opacity-10" />

@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { generateReceipt } from '@/services/pdfReceiptService';
+import SEO from '@/components/SEO';
 
 interface Order {
   id: string;
@@ -101,6 +102,10 @@ const OrdersPage = () => {
 
   return (
     <MainLayout>
+      <SEO
+        title="My Orders | Mahamitra Boutique"
+        description="View your order history and track current shipments from Mahamitra Boutique."
+      />
       <div className="container mx-auto px-4 py-8 min-h-[60vh]">
         <div className="max-w-4xl mx-auto">
           <h1 className="font-serif text-3xl font-bold mb-2">My Orders</h1>

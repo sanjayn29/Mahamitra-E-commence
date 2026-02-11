@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
+import SEO from '@/components/SEO';
 
 const SignupPage = () => {
   const navigate = useNavigate();
@@ -97,6 +98,10 @@ const SignupPage = () => {
 
   return (
     <div className="container mx-auto flex items-center justify-center min-h-screen">
+      <SEO
+        title="Sign Up | Mahamitra Boutique"
+        description="Create a Mahamitra Boutique account today. Join our community for exclusive offers and a seamless shopping experience."
+      />
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-center">Create an Account</CardTitle>

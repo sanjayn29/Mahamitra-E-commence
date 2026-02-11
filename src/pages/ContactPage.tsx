@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import emailjs from 'emailjs-com';
 import { CONTACT_INFO } from '@/constants/contact';
+import SEO from '@/components/SEO';
 
 const ContactPage = () => {
   const [formData, setFormData] = useState({
@@ -81,6 +82,10 @@ const ContactPage = () => {
 
   return (
     <MainLayout>
+      <SEO
+        title="Contact Us | Mahamitra Boutique"
+        description="Get in touch with Mahamitra Boutique. We're here to help with your orders, questions, and feedback. Visit us or call today."
+      />
       {/* Hero */}
       <section className="py-16 bg-muted">
         <div className="container mx-auto px-4 text-center">

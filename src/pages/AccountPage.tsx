@@ -6,9 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Mail, Calendar, Clock, LogOut } from 'lucide-react';
+import SEO from '@/components/SEO';
 
 const AccountPage = () => {
-  const { user, userData, loading, signOut } = useAuth();
+  const { user, loading, signOut } = useAuth(); // Removed userData
 
   if (loading) {
     return (
@@ -25,8 +26,16 @@ const AccountPage = () => {
     return <Navigate to="/login" replace />;
   }
 
+  const userName = user?.user_metadata?.full_name || user?.user_metadata?.name || 'User';
+  const userAvatar = user?.user_metadata?.avatar_url || '';
+  const userEmail = user?.email || '';
+
   return (
     <MainLayout>
+      <SEO
+        title="My Account | Mahamitra Boutique"
+        description="View your account details and manage your settings."
+      />
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto">
           {/* Page Header */}
@@ -45,23 +54,23 @@ const AccountPage = () => {
               <CardContent>
                 <div className="flex items-start gap-6">
                   <Avatar className="h-24 w-24">
-                    <AvatarImage src={user.photoURL || ''} alt={user.displayName || 'User'} />
+                    <AvatarImage src={userAvatar} alt={userName} />
                     <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
-                      {user.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}
+                      {userName.charAt(0) || userEmail.charAt(0) || 'U'}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 space-y-4">
                     <div>
                       <h3 className="font-serif text-2xl font-semibold mb-1">
-                        {user.displayName || 'User'}
+                        {userName}
                       </h3>
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Mail size={16} />
-                        <span className="font-sans text-sm">{user.email}</span>
+                        <span className="font-sans text-sm">{userEmail}</span>
                       </div>
                     </div>
 
-                    {userData && (
+                    {user && (
                       <>
                         <Separator />
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -70,11 +79,11 @@ const AccountPage = () => {
                             <div>
                               <p className="font-sans text-xs">Member Since</p>
                               <p className="font-sans font-medium text-foreground">
-                                {new Date(userData.createdAt).toLocaleDateString('en-US', {
+                                {user.created_at ? new Date(user.created_at).toLocaleDateString('en-US', {
                                   year: 'numeric',
                                   month: 'long',
                                   day: 'numeric',
-                                })}
+                                }) : 'N/A'}
                               </p>
                             </div>
                           </div>
@@ -83,11 +92,11 @@ const AccountPage = () => {
                             <div>
                               <p className="font-sans text-xs">Last Login</p>
                               <p className="font-sans font-medium text-foreground">
-                                {new Date(userData.lastLoginAt).toLocaleDateString('en-US', {
+                                {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString('en-US', {
                                   year: 'numeric',
                                   month: 'short',
                                   day: 'numeric',
-                                })}
+                                }) : 'N/A'}
                               </p>
                             </div>
                           </div>

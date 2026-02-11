@@ -13,6 +13,7 @@ import { fetchProductById, EnhancedProduct } from '@/services/productService';
 import { initiateRazorpayPayment } from '@/services/razorpayService';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
+import SEO from '@/components/SEO';
 
 const BuyNowPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -217,6 +218,10 @@ const BuyNowPage = () => {
 
   return (
     <MainLayout>
+      <SEO
+        title="Checkout | Mahamitra Boutique"
+        description="Secure checkout for your Mahamitra Boutique order. Review your items and complete your purchase safely."
+      />
       <div className="container mx-auto px-4 py-8">
         {/* Back Button */}
         <Button

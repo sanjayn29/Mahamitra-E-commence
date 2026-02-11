@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { generateReceipt } from '@/services/pdfReceiptService';
+import SEO from '@/components/SEO';
 
 interface OrderData {
   id: string;
@@ -127,6 +128,10 @@ const OrderSuccessPage = () => {
 
   return (
     <MainLayout>
+      <SEO
+        title="Order Confirmed | Mahamitra Boutique"
+        description="Thank you for your purchase! Your order has been successfully placed at Mahamitra Boutique."
+      />
       <div className="container max-w-2xl py-12 mx-auto px-4">
         {/* Success Icon */}
         <div className="text-center mb-8 animate-fade-in">
