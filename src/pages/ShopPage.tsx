@@ -210,9 +210,10 @@ const ShopPage = () => {
           <h1 className="font-serif text-4xl md:text-5xl font-semibold mb-4">
             {searchQuery
               ? `Search Results for "${searchQuery}"`
-              : selectedCategory
-              ? categories.find((c) => c.id === selectedCategory)?.name + "'s Collection"
-              : 'Our Collection'}
+              : selectedCategory === 'women' ? 'Women Clothing Online & Sarees'
+              : selectedCategory === 'girls' ? 'Girls Fashion Dresses'
+              : selectedCategory === 'babies' ? 'Baby Clothing Store Collection'
+              : 'Mahamitra Boutique Collection'}
           </h1>
           <p className="text-muted-foreground font-sans max-w-2xl mx-auto">
             {searchQuery

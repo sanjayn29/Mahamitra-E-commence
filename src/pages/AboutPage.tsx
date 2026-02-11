@@ -19,7 +19,7 @@ const AboutPage = () => {
             Our Story
           </span>
           <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl font-semibold text-white mb-6 max-w-3xl mx-auto">
-            Where Tradition Meets
+            Mahamitra Boutique: Where Tradition Meets
             <br />
             <span className="italic">Modern Elegance</span>
           </h1>

@@ -152,8 +152,8 @@ const SectionHeader = ({
           {badge}
         </span>
       )}
-      <h2 className="font-serif text-3xl md:text-4xl font-semibold">{title}</h2>
-      <p className="text-muted-foreground font-sans mt-1">{subtitle}</p>
+      <h2 className="font-serif text-3xl md:text-4xl font-semibold text-foreground">{title}</h2>
+      <p className="text-muted-foreground font-sans mt-2 max-w-2xl">{subtitle}</p>
     </div>
     {action}
   </div>
@@ -268,9 +268,10 @@ const HomePage = () => {
               New Collection 2026
             </span>
             <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl font-semibold text-white leading-tight mb-6">
-              Embrace Elegance,
-              <br />
-              Celebrate <span className="text-accent italic">You</span>
+              Mahamitra Boutique
+              <span className="block text-xl md:text-3xl lg:text-4xl mt-4 font-sans font-normal text-white/90">
+                Premium Women Clothing Online, Girls & Baby Fashion
+              </span>
             </h1>
             <p className="text-lg md:text-xl text-white/90 font-sans mb-8 max-w-lg">
               Discover exquisite handcrafted apparel for women, girls, and babies.
