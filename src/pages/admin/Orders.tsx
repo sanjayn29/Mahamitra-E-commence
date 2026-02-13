@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Package, RefreshCw, Eye, Phone, Mail, MapPin } from 'lucide-react';
+import { ArrowLeft, Package, RefreshCw, Eye, Phone, Mail, MapPin, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -27,7 +27,9 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 
 interface Order {
@@ -58,11 +60,20 @@ const Orders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const { user } = useAuth();
 
   // Fetch all orders
   const fetchOrders = async () => {
     try {
       setLoading(true);
+      
+      // Check if user is authenticated with Supabase
+      if (!user) {
+        console.warn('No Supabase authentication found');
+        toast.error('Please log in with your Supabase account first');
+        setOrders([]);
+        return;
+      }
       
       let query = supabase
         .from('orders')
@@ -76,13 +87,23 @@ const Orders = () => {
       const { data, error } = await query;
 
       if (error) {
+        console.error('Supabase error:', error);
         throw error;
       }
 
+      console.log(`Fetched ${data?.length || 0} orders`);
       setOrders(data || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching orders:', error);
-      toast.error('Failed to fetch orders');
+      
+      // Provide helpful error messages
+      if (error?.code === 'PGRST301' || error?.message?.includes('JWT')) {
+        toast.error('Authentication expired. Please log in again.');
+      } else if (error?.code === '42501' || error?.message?.includes('permission denied')) {
+        toast.error('Database access denied. Please check admin permissions.');
+      } else {
+        toast.error('Failed to fetch orders');
+      }
     } finally {
       setLoading(false);
     }
@@ -164,6 +185,19 @@ const Orders = () => {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
+        {/* Auth Warning Alert */}
+        {!user && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Authentication Required</AlertTitle>
+            <AlertDescription>
+              You need to be logged in with your Supabase account to view all orders. 
+              Please <Link to="/login" className="underline font-medium">log in here</Link> first, 
+              then return to the admin dashboard.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <Card>
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -197,6 +231,17 @@ const Orders = () => {
               <div className="text-center py-12">
                 <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
                 <p className="mt-4 text-muted-foreground">Loading orders...</p>
+              </div>
+            ) : !user ? (
+              <div className="text-center py-12">
+                <AlertCircle size={48} className="mx-auto text-destructive mb-4" />
+                <p className="text-xl font-medium mb-2">Login Required</p>
+                <p className="text-muted-foreground mb-4">
+                  Please log in with your Supabase account to access orders.
+                </p>
+                <Link to="/login">
+                  <Button>Go to Login</Button>
+                </Link>
               </div>
             ) : orders.length === 0 ? (
               <div className="text-center py-12">
