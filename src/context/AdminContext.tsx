@@ -1,34 +1,22 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode } from 'react';
+import { useAuth } from './AuthContext';
 
 interface AdminContextType {
-  isLoggedIn: boolean;
-  login: (username: string, password: string) => boolean;
-  logout: () => void;
+  isAdmin: boolean;
+  isLoading: boolean;
 }
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
 export const AdminProvider = ({ children }: { children: ReactNode }) => {
-  const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    return sessionStorage.getItem('adminLoggedIn') === 'true';
-  });
+  const { user, loading } = useAuth();
 
-  const login = (username: string, password: string): boolean => {
-    if (username === 'saravana' && password === 'saravanaa') {
-      setIsLoggedIn(true);
-      sessionStorage.setItem('adminLoggedIn', 'true');
-      return true;
-    }
-    return false;
-  };
+  // Check if the user is logged in AND has the is_admin flag in their metadata
+  const isAdmin = user?.user_metadata?.is_admin === true;
 
-  const logout = () => {
-    setIsLoggedIn(false);
-    sessionStorage.removeItem('adminLoggedIn');
-  };
-
+  // We consider admin context "loading" if the underlying auth context is still loading
   return (
-    <AdminContext.Provider value={{ isLoggedIn, login, logout }}>
+    <AdminContext.Provider value={{ isAdmin, isLoading: loading }}>
       {children}
     </AdminContext.Provider>
   );

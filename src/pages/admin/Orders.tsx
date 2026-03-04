@@ -66,15 +66,6 @@ const Orders = () => {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      
-      // Check if user is authenticated with Supabase
-      if (!user) {
-        console.warn('No Supabase authentication found');
-        toast.error('Please log in with your Supabase account first');
-        setOrders([]);
-        return;
-      }
-      
       let query = supabase
         .from('orders')
         .select('*')
@@ -95,15 +86,7 @@ const Orders = () => {
       setOrders(data || []);
     } catch (error: any) {
       console.error('Error fetching orders:', error);
-      
-      // Provide helpful error messages
-      if (error?.code === 'PGRST301' || error?.message?.includes('JWT')) {
-        toast.error('Authentication expired. Please log in again.');
-      } else if (error?.code === '42501' || error?.message?.includes('permission denied')) {
-        toast.error('Database access denied. Please check admin permissions.');
-      } else {
-        toast.error('Failed to fetch orders');
-      }
+      toast.error('Failed to fetch orders');
     } finally {
       setLoading(false);
     }
@@ -183,20 +166,7 @@ const Orders = () => {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        {/* Auth Warning Alert */}
-        {!user && (
-          <Alert variant="destructive" className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Authentication Required</AlertTitle>
-            <AlertDescription>
-              You need to be logged in with your Supabase account to view all orders. 
-              Please <Link to="/login" className="underline font-medium">log in here</Link> first, 
-              then return to the admin dashboard.
-            </AlertDescription>
-          </Alert>
-        )}
 
         <Card>
           <CardHeader>
@@ -205,7 +175,7 @@ const Orders = () => {
                 <Package size={24} />
                 All Orders ({orders.length})
               </CardTitle>
-              
+
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Filter:</span>
                 <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -232,23 +202,12 @@ const Orders = () => {
                 <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
                 <p className="mt-4 text-muted-foreground">Loading orders...</p>
               </div>
-            ) : !user ? (
-              <div className="text-center py-12">
-                <AlertCircle size={48} className="mx-auto text-destructive mb-4" />
-                <p className="text-xl font-medium mb-2">Login Required</p>
-                <p className="text-muted-foreground mb-4">
-                  Please log in with your Supabase account to access orders.
-                </p>
-                <Link to="/login">
-                  <Button>Go to Login</Button>
-                </Link>
-              </div>
             ) : orders.length === 0 ? (
               <div className="text-center py-12">
                 <Package size={48} className="mx-auto text-muted-foreground mb-4" />
                 <p className="text-xl font-medium mb-2">No orders found</p>
                 <p className="text-muted-foreground">
-                  {filterStatus !== 'all' 
+                  {filterStatus !== 'all'
                     ? `No ${filterStatus} orders at the moment.`
                     : 'Orders will appear here once customers make purchases.'}
                 </p>
@@ -275,12 +234,12 @@ const Orders = () => {
                         <TableCell className="font-mono text-xs">
                           {order.id.slice(0, 8)}...
                         </TableCell>
-                        
+
                         <TableCell>
                           <div className="flex items-center gap-3">
                             {order.product_image && (
-                              <img 
-                                src={order.product_image} 
+                              <img
+                                src={order.product_image}
                                 alt={order.product_name}
                                 className="w-12 h-12 object-cover rounded"
                               />
@@ -295,24 +254,24 @@ const Orders = () => {
                             </div>
                           </div>
                         </TableCell>
-                        
+
                         <TableCell>
                           <p className="font-medium">{order.customer_name}</p>
                           <p className="text-xs text-muted-foreground">{order.customer_email}</p>
                         </TableCell>
-                        
+
                         <TableCell className="text-center">{order.quantity}</TableCell>
-                        
+
                         <TableCell className="font-semibold">
                           ₹{order.total_amount.toFixed(2)}
                         </TableCell>
-                        
+
                         <TableCell>
                           <Badge variant={getStatusBadgeVariant(order.payment_status)}>
                             {order.payment_status}
                           </Badge>
                         </TableCell>
-                        
+
                         <TableCell>
                           <Select
                             value={order.order_status}
@@ -331,11 +290,11 @@ const Orders = () => {
                             </SelectContent>
                           </Select>
                         </TableCell>
-                        
+
                         <TableCell className="text-sm">
                           {formatDate(order.created_at)}
                         </TableCell>
-                        
+
                         <TableCell>
                           <Dialog>
                             <DialogTrigger asChild>
@@ -347,15 +306,15 @@ const Orders = () => {
                               <DialogHeader>
                                 <DialogTitle>Order Details</DialogTitle>
                               </DialogHeader>
-                              
+
                               <div className="space-y-6 py-4">
                                 {/* Product Info */}
                                 <div>
                                   <h3 className="font-semibold mb-3">Product Information</h3>
                                   <div className="flex gap-4">
                                     {order.product_image && (
-                                      <img 
-                                        src={order.product_image} 
+                                      <img
+                                        src={order.product_image}
                                         alt={order.product_name}
                                         className="w-24 h-24 object-cover rounded"
                                       />

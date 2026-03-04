@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/context/AuthContext';
 import { useAdmin } from '@/context/AdminContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,22 +9,54 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
 const AdminLoginPage = () => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { login } = useAdmin();
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const { user } = useAuth();
+  const { isAdmin, isLoading } = useAdmin();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Redirect if already logged in as admin
+  useEffect(() => {
+    if (!isLoading && user && isAdmin) {
+      navigate('/admin/dashboard');
+    }
+  }, [user, isAdmin, isLoading, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (login(username, password)) {
+    setIsLoggingIn(true);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      // Check for admin role
+      if (data.user?.user_metadata?.is_admin !== true) {
+        await supabase.auth.signOut();
+        toast.error('Access Denied', {
+          description: 'Your account does not have administrator privileges.',
+        });
+        return;
+      }
+
       toast.success('Welcome Admin!', {
         description: 'Successfully logged in to admin dashboard',
       });
       navigate('/admin/dashboard');
-    } else {
-      toast.error('Invalid Credentials', {
-        description: 'Please check your username and password',
+
+    } catch (error: any) {
+      console.error('Login error:', error);
+      toast.error('Login Failed', {
+        description: error.message || 'Please check your email and password.',
       });
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -35,15 +69,16 @@ const AdminLoginPage = () => {
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="username">Username</Label>
+            <Label htmlFor="email">Email</Label>
             <Input
-              id="username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="saravana"
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="admin@mahamitra.com"
               className="mt-1"
               required
+              disabled={isLoggingIn}
             />
           </div>
           <div>
@@ -56,10 +91,11 @@ const AdminLoginPage = () => {
               placeholder="••••••••"
               className="mt-1"
               required
+              disabled={isLoggingIn}
             />
           </div>
-          <Button type="submit" className="w-full gradient-primary text-primary-foreground">
-            Sign In
+          <Button type="submit" className="w-full gradient-primary text-primary-foreground" disabled={isLoggingIn}>
+            {isLoggingIn ? 'Signing in...' : 'Sign In'}
           </Button>
         </form>
         <p className="text-center text-xs text-muted-foreground mt-6">
