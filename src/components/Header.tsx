@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useSearchParams, useNavigate } from 'react-router-dom';
-import { Menu, X, User, Heart, Search, LogOut, Package } from 'lucide-react';
+import { Menu, X, User, Heart, Search, LogOut, Package, ShoppingCart } from 'lucide-react';
 import logoImg from '@/assert/logo.png';
 import { useAuth } from '@/context/AuthContext';
+import { useCart } from '@/context/CartContext';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -14,6 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { fetchAllProducts, EnhancedProduct } from '@/services/productService';
+import CartSidebar from '@/components/CartSidebar';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -24,9 +26,12 @@ const Header = () => {
   const [allProducts, setAllProducts] = useState<EnhancedProduct[]>([]);
   const searchRef = useRef<HTMLDivElement>(null);
   const { user, signOut } = useAuth();
+  const { getCartCount, toggleCart } = useCart();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+
+  const cartCount = getCartCount();
 
   const navLinks = [
     { path: '/', label: 'Home' },
@@ -63,7 +68,7 @@ const Header = () => {
           p.material.toLowerCase().includes(query) ||
           p.category.toLowerCase().includes(query) ||
           p.subcategory.toLowerCase().includes(query)
-      ).slice(0, 5); // Limit to 5 suggestions
+      ).slice(0, 5);
       setSearchResults(filtered);
       setShowResults(true);
     } else {
@@ -102,36 +107,26 @@ const Header = () => {
   };
 
   const isActive = (path: string) => {
-    // Handle home page
     if (path === '/') {
       return location.pathname === '/';
     }
-    
-    // Handle category-specific links (e.g., /shop?category=women)
     if (path.includes('?')) {
       const [basePath, queryString] = path.split('?');
       const pathParams = new URLSearchParams(queryString);
       const currentCategory = searchParams.get('category');
       const linkCategory = pathParams.get('category');
-      
       return location.pathname === basePath && currentCategory === linkCategory;
     }
-    
-    // Handle regular shop page (no category)
     if (path === '/shop') {
       const currentCategory = searchParams.get('category');
       return location.pathname === '/shop' && !currentCategory;
     }
-    
-    // Handle other pages
     return location.pathname === path;
   };
 
   return (
     <>
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
-        
-
         {/* Main Header */}
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-20">
@@ -156,23 +151,21 @@ const Header = () => {
                 <Link
                   key={link.path}
                   to={link.path}
-                  className={`text-sm font-sans font-medium transition-colors hover:text-primary relative group ${
-                    isActive(link.path) ? 'text-primary' : 'text-foreground'
-                  }`}
+                  className={`text-sm font-sans font-medium transition-colors hover:text-primary relative group ${isActive(link.path) ? 'text-primary' : 'text-foreground'
+                    }`}
                 >
                   {link.label}
-                  <span className={`absolute -bottom-1 left-0 h-0.5 bg-primary transition-all duration-300 ${
-                    isActive(link.path) ? 'w-full' : 'w-0 group-hover:w-full'
-                  }`} />
+                  <span className={`absolute -bottom-1 left-0 h-0.5 bg-primary transition-all duration-300 ${isActive(link.path) ? 'w-full' : 'w-0 group-hover:w-full'
+                    }`} />
                 </Link>
               ))}
             </nav>
 
             {/* Right Icons */}
             <div className="flex items-center gap-2 md:gap-4">
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 className="hidden md:flex"
                 onClick={() => setIsSearchOpen(!isSearchOpen)}
               >
@@ -188,7 +181,24 @@ const Header = () => {
                   <Package size={20} />
                 </Link>
               </Button>
-              
+
+              {/* Cart Button with Badge */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative"
+                onClick={toggleCart}
+                title="Shopping Cart"
+                aria-label={`Cart (${cartCount} items)`}
+              >
+                <ShoppingCart size={20} />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs font-sans font-bold w-5 h-5 rounded-full flex items-center justify-center leading-none animate-in zoom-in-50 duration-200">
+                    {cartCount > 99 ? '99+' : cartCount}
+                  </span>
+                )}
+              </Button>
+
               {/* User Account */}
               {user ? (
                 <DropdownMenu>
@@ -260,7 +270,7 @@ const Header = () => {
                     className="w-full px-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-background"
                     autoFocus
                   />
-                  
+
                   {/* Search Results Dropdown */}
                   {showResults && searchResults.length > 0 && (
                     <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-50 max-h-96 overflow-y-auto">
@@ -274,9 +284,7 @@ const Header = () => {
                             src={product.image || '/placeholder-image.jpg'}
                             alt={product.name}
                             className="w-12 h-12 object-cover rounded"
-                            onError={(e) => {
-                              e.currentTarget.src = '/placeholder-image.jpg';
-                            }}
+                            onError={(e) => { e.currentTarget.src = '/placeholder-image.jpg'; }}
                           />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{product.name}</p>
@@ -288,9 +296,7 @@ const Header = () => {
                       {searchQuery && (
                         <button
                           type="button"
-                          onClick={() => {
-                            handleSearch(new Event('submit') as any);
-                          }}
+                          onClick={() => { handleSearch(new Event('submit') as any); }}
                           className="w-full p-3 text-sm text-center text-primary hover:bg-muted font-medium"
                         >
                           View all results for "{searchQuery}"
@@ -302,8 +308,8 @@ const Header = () => {
                 <Button type="submit" disabled={!searchQuery.trim()}>
                   Search
                 </Button>
-                <Button 
-                  type="button" 
+                <Button
+                  type="button"
                   variant="outline"
                   onClick={() => {
                     setIsSearchOpen(false);
@@ -334,7 +340,7 @@ const Header = () => {
                       placeholder="Search products..."
                       className="w-full px-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-background text-sm"
                     />
-                    
+
                     {/* Mobile Search Results Dropdown */}
                     {showResults && searchResults.length > 0 && (
                       <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-50 max-h-72 overflow-y-auto">
@@ -348,9 +354,7 @@ const Header = () => {
                               src={product.image || '/placeholder-image.jpg'}
                               alt={product.name}
                               className="w-10 h-10 object-cover rounded"
-                              onError={(e) => {
-                                e.currentTarget.src = '/placeholder-image.jpg';
-                              }}
+                              onError={(e) => { e.currentTarget.src = '/placeholder-image.jpg'; }}
                             />
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-medium truncate">{product.name}</p>
@@ -359,17 +363,6 @@ const Header = () => {
                             </div>
                           </div>
                         ))}
-                        {searchQuery && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleSearch(new Event('submit') as any);
-                            }}
-                            className="w-full p-2 text-xs text-center text-primary hover:bg-muted font-medium"
-                          >
-                            View all results
-                          </button>
-                        )}
                       </div>
                     )}
                   </div>
@@ -378,16 +371,15 @@ const Header = () => {
                   </Button>
                 </form>
               </div>
-              
+
               <div className="flex flex-col gap-4">
                 {navLinks.map((link) => (
                   <Link
                     key={link.path}
                     to={link.path}
                     onClick={() => setIsMenuOpen(false)}
-                    className={`text-base font-sans font-medium py-2 transition-colors ${
-                      isActive(link.path) ? 'text-primary' : 'text-foreground'
-                    }`}
+                    className={`text-base font-sans font-medium py-2 transition-colors ${isActive(link.path) ? 'text-primary' : 'text-foreground'
+                      }`}
                   >
                     {link.label}
                   </Link>
@@ -395,26 +387,40 @@ const Header = () => {
                 <Link
                   to="/favorites"
                   onClick={() => setIsMenuOpen(false)}
-                  className={`text-base font-sans font-medium py-2 transition-colors flex items-center gap-2 ${
-                    isActive('/favorites') ? 'text-primary' : 'text-foreground'
-                  }`}
+                  className={`text-base font-sans font-medium py-2 transition-colors flex items-center gap-2 ${isActive('/favorites') ? 'text-primary' : 'text-foreground'
+                    }`}
                 >
                   <Heart size={18} /> Favorites
                 </Link>
                 <Link
                   to="/orders"
                   onClick={() => setIsMenuOpen(false)}
-                  className={`text-base font-sans font-medium py-2 transition-colors flex items-center gap-2 ${
-                    isActive('/orders') ? 'text-primary' : 'text-foreground'
-                  }`}
+                  className={`text-base font-sans font-medium py-2 transition-colors flex items-center gap-2 ${isActive('/orders') ? 'text-primary' : 'text-foreground'
+                    }`}
                 >
                   <Package size={18} /> Orders
                 </Link>
+                {/* Cart in mobile nav */}
+                <button
+                  onClick={() => { setIsMenuOpen(false); toggleCart(); }}
+                  className="text-base font-sans font-medium py-2 transition-colors flex items-center gap-2 text-foreground hover:text-primary text-left"
+                >
+                  <ShoppingCart size={18} />
+                  Cart
+                  {cartCount > 0 && (
+                    <span className="bg-primary text-primary-foreground text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                      {cartCount}
+                    </span>
+                  )}
+                </button>
               </div>
             </nav>
           </div>
         )}
       </header>
+
+      {/* Cart Sidebar — rendered outside header so it overlays full page */}
+      <CartSidebar />
     </>
   );
 };

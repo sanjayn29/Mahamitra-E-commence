@@ -1,8 +1,8 @@
--- Create discount_coupons table
+-- Create the discount_coupons table
 CREATE TABLE IF NOT EXISTS discount_coupons (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  code TEXT NOT NULL UNIQUE,
-  discount_amount NUMERIC(10, 2) NOT NULL CHECK (discount_amount > 0),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code TEXT UNIQUE NOT NULL,
+  discount_amount DECIMAL(10, 2) NOT NULL CHECK (discount_amount > 0),
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -11,22 +11,30 @@ CREATE TABLE IF NOT EXISTS discount_coupons (
 -- Enable RLS
 ALTER TABLE discount_coupons ENABLE ROW LEVEL SECURITY;
 
--- Allow anyone to read active coupons (for validation at checkout)
-CREATE POLICY "Anyone can read active coupons"
+-- Policy: Anyone can read coupons (to validate during checkout)
+CREATE POLICY "Anyone can read coupons"
   ON discount_coupons FOR SELECT
   USING (true);
 
--- Allow inserts (admin uses service key or anon for now)
-CREATE POLICY "Allow insert coupons"
-  ON discount_coupons FOR INSERT
-  WITH CHECK (true);
+-- Policy: Only authenticated users (admins) can manage coupons
+CREATE POLICY "Authenticated users can manage coupons"
+  ON discount_coupons FOR ALL
+  USING (auth.role() = 'authenticated')
+  WITH CHECK (auth.role() = 'authenticated');
 
--- Allow updates
-CREATE POLICY "Allow update coupons"
-  ON discount_coupons FOR UPDATE
-  USING (true);
+-- Trigger to auto-update updated_at
+CREATE OR REPLACE FUNCTION update_discount_coupons_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
--- Allow deletes
-CREATE POLICY "Allow delete coupons"
-  ON discount_coupons FOR DELETE
-  USING (true);
+CREATE TRIGGER set_discount_coupons_updated_at
+  BEFORE UPDATE ON discount_coupons
+  FOR EACH ROW
+  EXECUTE FUNCTION update_discount_coupons_updated_at();
+
+-- Notify Supabase to refresh schema cache
+NOTIFY pgrst, 'reload schema';

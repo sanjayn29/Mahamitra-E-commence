@@ -36,26 +36,26 @@ const AdminLoginPage = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label htmlFor="username">Username</Label>
-            <Input 
-              id="username" 
-              type="text" 
-              value={username} 
-              onChange={(e) => setUsername(e.target.value)} 
-              placeholder="sanjayn" 
-              className="mt-1" 
-              required 
+            <Input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="saravana"
+              className="mt-1"
+              required
             />
           </div>
           <div>
             <Label htmlFor="password">Password</Label>
-            <Input 
-              id="password" 
-              type="password" 
-              value={password} 
-              onChange={(e) => setPassword(e.target.value)} 
-              placeholder="••••••••" 
-              className="mt-1" 
-              required 
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="mt-1"
+              required
             />
           </div>
           <Button type="submit" className="w-full gradient-primary text-primary-foreground">

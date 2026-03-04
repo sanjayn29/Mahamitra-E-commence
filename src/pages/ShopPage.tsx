@@ -4,7 +4,6 @@ import { SlidersHorizontal, Grid, List, X, Loader2 } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
 import ProductCard from '@/components/ProductCard';
 import { Button } from '@/components/ui/button';
-import { useProducts, useProductsByCategory } from '@/hooks/useProducts';
 import { fetchAllProducts, fetchProductsByCategory, EnhancedProduct } from '@/services/productService';
 import {
   Select,
@@ -33,24 +32,20 @@ const ShopPage = () => {
   const [products, setProducts] = useState<EnhancedProduct[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const selectedCategory = searchParams.get('category') as 'women' | 'girls' | 'babies' | null;
+  // Multi-select: array of selected category IDs
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(() => {
+    const urlCategory = searchParams.get('category');
+    return urlCategory ? [urlCategory] : [];
+  });
+
   const searchQuery = searchParams.get('search') || '';
 
-  // Fetch products based on category selection
+  // Fetch ALL products on mount (multi-select requires all products always)
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
       try {
-        let fetchedProducts: EnhancedProduct[] = [];
-        
-        if (selectedCategory) {
-          // Fetch products for specific category
-          fetchedProducts = await fetchProductsByCategory(selectedCategory);
-        } else {
-          // Fetch all products for shop page
-          fetchedProducts = await fetchAllProducts();
-        }
-        
+        const fetchedProducts = await fetchAllProducts();
         setProducts(fetchedProducts);
       } catch (error) {
         console.error('Error fetching products:', error);
@@ -59,14 +54,25 @@ const ShopPage = () => {
         setLoading(false);
       }
     };
-
     fetchProducts();
-  }, [selectedCategory]);
+  }, []);
+
+  const handleCategoryChange = (categoryId: string, checked: boolean) => {
+    setSelectedCategories(prev => {
+      if (checked) {
+        // Add to array (only if not already present)
+        return prev.includes(categoryId) ? prev : [...prev, categoryId];
+      } else {
+        // Remove from array
+        return prev.filter(c => c !== categoryId);
+      }
+    });
+  };
 
   const filteredProducts = useMemo(() => {
     let result = [...products];
 
-    // Filter by search query (name, ID, material, category)
+    // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       result = result.filter(
@@ -78,6 +84,11 @@ const ShopPage = () => {
           p.category.toLowerCase().includes(query) ||
           p.subcategory.toLowerCase().includes(query)
       );
+    }
+
+    // Multi-select category filter: empty = show all
+    if (selectedCategories.length > 0) {
+      result = result.filter(p => selectedCategories.includes(p.category));
     }
 
     // Filter by price range
@@ -93,9 +104,6 @@ const ShopPage = () => {
       case 'price-high':
         result.sort((a, b) => b.price - a.price);
         break;
-      case 'rating':
-        // Skip sort by rating since we removed fake ratings
-        break;
       case 'newest':
         result.sort((a, b) => {
           const dateA = new Date(a.created_at || '').getTime();
@@ -107,23 +115,15 @@ const ShopPage = () => {
         result.sort((a, b) => a.name.localeCompare(b.name));
         break;
       default:
-        // Featured - keep original order or sort by availability
+        // Featured — in-stock items first
         result = result.filter((p) => p.inStock).concat(result.filter((p) => !p.inStock));
     }
 
     return result;
-  }, [products, priceRange, sortBy, searchQuery]);
-
-  const handleCategoryChange = (category: string) => {
-    if (category === selectedCategory) {
-      searchParams.delete('category');
-    } else {
-      searchParams.set('category', category);
-    }
-    setSearchParams(searchParams);
-  };
+  }, [products, priceRange, sortBy, searchQuery, selectedCategories]);
 
   const clearFilters = () => {
+    setSelectedCategories([]);
     setSearchParams({});
     setPriceRange([0, 30000]);
     setSortBy('featured');
@@ -133,30 +133,32 @@ const ShopPage = () => {
   const categories = [
     { id: 'women', name: 'Women', description: 'Elegant sarees & traditional wear' },
     { id: 'girls', name: 'Girls', description: 'Stylish outfits for young ladies' },
-    { id: 'babies', name: 'Babies', description: 'Adorable clothing for little ones' }
+    { id: 'babies', name: 'Babies', description: 'Adorable clothing for little ones' },
   ];
 
   const activeFiltersCount =
-    (selectedCategory ? 1 : 0) +
+    (selectedCategories.length > 0 ? 1 : 0) +
     (priceRange[0] > 0 || priceRange[1] < 30000 ? 1 : 0) +
     (searchQuery ? 1 : 0);
 
   const FilterContent = () => (
     <div className="space-y-6">
-      {/* Categories */}
+      {/* Categories — Multi-select checkboxes */}
       <div>
         <h3 className="font-serif text-lg font-medium mb-4">Categories</h3>
         <div className="space-y-3">
           {categories.map((category) => (
             <div key={category.id} className="flex items-center gap-3">
               <Checkbox
-                id={category.id}
-                checked={selectedCategory === category.id}
-                onCheckedChange={() => handleCategoryChange(category.id)}
+                id={`filter-${category.id}`}
+                checked={selectedCategories.includes(category.id)}
+                onCheckedChange={(checked) =>
+                  handleCategoryChange(category.id, checked === true)
+                }
               />
               <label
-                htmlFor={category.id}
-                className="font-sans text-sm cursor-pointer"
+                htmlFor={`filter-${category.id}`}
+                className="font-sans text-sm cursor-pointer select-none"
               >
                 {category.name}
               </label>
@@ -185,12 +187,8 @@ const ShopPage = () => {
       </div>
 
       {/* Clear Filters */}
-      {(selectedCategory || priceRange[0] > 0 || priceRange[1] < 30000) && (
-        <Button
-          variant="outline"
-          onClick={clearFilters}
-          className="w-full"
-        >
+      {(selectedCategories.length > 0 || priceRange[0] > 0 || priceRange[1] < 30000) && (
+        <Button variant="outline" onClick={clearFilters} className="w-full">
           Clear All Filters
         </Button>
       )}
@@ -203,17 +201,18 @@ const ShopPage = () => {
         title="Shop Women Clothing Online & Baby Fashion | Mahamitra Boutique"
         description="Browse our complete collection of women clothing online, girls fashion dresses, and soft baby clothing store items. Find your perfect style at Mahamitra Boutique."
       />
-      
+
       {/* Hero */}
       <section className="bg-muted py-12">
         <div className="container mx-auto px-4 text-center">
           <h1 className="font-serif text-4xl md:text-5xl font-semibold mb-4">
             {searchQuery
               ? `Search Results for "${searchQuery}"`
-              : selectedCategory === 'women' ? 'Women Clothing Online & Sarees'
-              : selectedCategory === 'girls' ? 'Girls Fashion Dresses'
-              : selectedCategory === 'babies' ? 'Baby Clothing Store Collection'
-              : 'Mahamitra Boutique Collection'}
+              : selectedCategories.length === 1
+                ? selectedCategories[0] === 'women' ? 'Women Clothing Online & Sarees'
+                  : selectedCategories[0] === 'girls' ? 'Girls Fashion Dresses'
+                    : 'Baby Clothing Store Collection'
+                : 'Mahamitra Boutique Collection'}
           </h1>
           <p className="text-muted-foreground font-sans max-w-2xl mx-auto">
             {searchQuery
@@ -241,15 +240,16 @@ const ShopPage = () => {
                   <X size={14} />
                 </button>
               )}
-              {selectedCategory && (
+              {selectedCategories.map(cat => (
                 <button
-                  onClick={() => handleCategoryChange(selectedCategory)}
-                  className="inline-flex items-center gap-1 bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-sans"
+                  key={cat}
+                  onClick={() => handleCategoryChange(cat, false)}
+                  className="inline-flex items-center gap-1 bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-sans capitalize"
                 >
-                  {categories.find((c) => c.id === selectedCategory)?.name}
+                  {cat}
                   <X size={14} />
                 </button>
-              )}
+              ))}
               {(priceRange[0] > 0 || priceRange[1] < 30000) && (
                 <button
                   onClick={() => setPriceRange([0, 30000])}
@@ -259,12 +259,7 @@ const ShopPage = () => {
                   <X size={14} />
                 </button>
               )}
-              <Button
-                onClick={clearFilters}
-                variant="outline"
-                size="sm"
-                className="ml-2"
-              >
+              <Button onClick={clearFilters} variant="outline" size="sm" className="ml-2">
                 Clear All
               </Button>
             </div>
@@ -353,10 +348,9 @@ const ShopPage = () => {
                 <div className="text-center py-16">
                   <h3 className="font-serif text-xl mb-2">No products found</h3>
                   <p className="text-muted-foreground font-sans mb-4">
-                    {selectedCategory 
-                      ? `No products available in the ${selectedCategory} category. Try adjusting your filters.`
-                      : 'Try adjusting your filters to find what you\'re looking for.'
-                    }
+                    {selectedCategories.length > 0
+                      ? `No products available in the selected categories. Try adjusting your filters.`
+                      : "Try adjusting your filters to find what you're looking for."}
                   </p>
                   <Button onClick={clearFilters}>Clear Filters</Button>
                 </div>
@@ -365,7 +359,7 @@ const ShopPage = () => {
                   <div className="flex justify-between items-center">
                     <p className="text-muted-foreground font-sans text-sm">
                       Showing {filteredProducts.length} product{filteredProducts.length !== 1 ? 's' : ''}
-                      {selectedCategory && ` in ${selectedCategory} category`}
+                      {selectedCategories.length > 0 && ` in ${selectedCategories.join(', ')}`}
                     </p>
                   </div>
                   <div

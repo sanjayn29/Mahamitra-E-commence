@@ -44,32 +44,33 @@ const App = () => (
               <Sonner />
               <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                 <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/shop" element={<ShopPage />} />
-              <Route path="/product/:id" element={<ProductPage />} />
-              <Route path="/buy-now/:id" element={<BuyNowPage />} />
-              <Route path="/about" element={<AboutPage />} />
-              <Route path="/contact" element={<ContactPage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/signup" element={<SignupPage />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/account" element={<AccountPage />} />
-              <Route path="/favorites" element={<FavoritesPage />} />
-              <Route path="/orders" element={<OrdersPage />} />
-              <Route path="/order-success/:orderId" element={<OrderSuccessPage />} />
-              <Route path="/admin" element={<AdminLoginPage />} />
-              <Route element={<ProtectedAdminRoute />}>
-                <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-                <Route path="/admin/add-product" element={<AddProductPage />} />
-                <Route path="/admin/inventory" element={<InventoryManagement />} />
-                <Route path="/admin/orders" element={<Orders />} />
-                <Route path="/admin/analytics" element={<ViewAnalysis />} />
-                <Route path="/admin/coupons" element={<DiscountCoupons />} />
-              </Route>
-              <Route path="*" element={<NotFound />} />
-              </Routes>
-              <AIChatbot />
-            </BrowserRouter>
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/shop" element={<ShopPage />} />
+                  <Route path="/product/:id" element={<ProductPage />} />
+                  <Route path="/buy-now" element={<BuyNowPage />} />
+                  <Route path="/buy-now/:id" element={<BuyNowPage />} />
+                  <Route path="/about" element={<AboutPage />} />
+                  <Route path="/contact" element={<ContactPage />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/signup" element={<SignupPage />} />
+                  <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/account" element={<AccountPage />} />
+                  <Route path="/favorites" element={<FavoritesPage />} />
+                  <Route path="/orders" element={<OrdersPage />} />
+                  <Route path="/order-success/:orderId" element={<OrderSuccessPage />} />
+                  <Route path="/admin" element={<AdminLoginPage />} />
+                  <Route element={<ProtectedAdminRoute />}>
+                    <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+                    <Route path="/admin/add-product" element={<AddProductPage />} />
+                    <Route path="/admin/inventory" element={<InventoryManagement />} />
+                    <Route path="/admin/orders" element={<Orders />} />
+                    <Route path="/admin/analytics" element={<ViewAnalysis />} />
+                    <Route path="/admin/coupons" element={<DiscountCoupons />} />
+                  </Route>
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+                <AIChatbot />
+              </BrowserRouter>
             </FavoritesProvider>
           </CartProvider>
         </AdminProvider>

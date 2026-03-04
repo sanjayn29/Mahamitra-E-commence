@@ -33,6 +33,7 @@ export interface EnhancedProduct {
   images: string[];
   image: string;
   inStock: boolean;
+  size_required: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -42,7 +43,7 @@ export const transformProduct = (dbProduct: any, category?: 'women' | 'girls' | 
   // Parse sizes and colors - they might be stored as strings or arrays
   let sizes: string[] = [];
   let colors: string[] = [];
-  
+
   try {
     if (dbProduct.sizes) {
       if (typeof dbProduct.sizes === 'string') {
@@ -51,7 +52,7 @@ export const transformProduct = (dbProduct: any, category?: 'women' | 'girls' | 
         sizes = dbProduct.sizes;
       }
     }
-    
+
     if (dbProduct.colors) {
       if (typeof dbProduct.colors === 'string') {
         colors = dbProduct.colors.split(',').map(c => c.trim()).filter(c => c.length > 0);
@@ -59,7 +60,7 @@ export const transformProduct = (dbProduct: any, category?: 'women' | 'girls' | 
         colors = dbProduct.colors;
       }
     }
-    
+
     // Default sizes and colors if none provided
     if (sizes.length === 0) {
       sizes = ['Free Size'];
@@ -67,13 +68,13 @@ export const transformProduct = (dbProduct: any, category?: 'women' | 'girls' | 
     if (colors.length === 0) {
       colors = ['Default'];
     }
-    
+
   } catch (error) {
     console.error('Error parsing sizes/colors:', error);
     sizes = ['Free Size'];
     colors = ['Default'];
   }
-  
+
   return {
     id: dbProduct.productId,
     productId: dbProduct.productId,
@@ -90,6 +91,8 @@ export const transformProduct = (dbProduct: any, category?: 'women' | 'girls' | 
     images: [dbProduct.image], // Convert single image to array
     image: dbProduct.image,
     inStock: dbProduct.status === 'available',
+    // Default to true (size required) if column doesn't exist yet in DB
+    size_required: dbProduct.size_required !== false,
     created_at: dbProduct.created_at,
     updated_at: dbProduct.updated_at
   };
@@ -176,7 +179,7 @@ export const fetchAllProducts = async (): Promise<EnhancedProduct[]> => {
 // Fetch product by ID from any category - optimized with category hint
 export const getProduct = async (productId: string, category: 'women' | 'girls' | 'babies'): Promise<EnhancedProduct | null> => {
   const table = `${category}_products`;
-  
+
   try {
     const { data, error } = await supabase
       .from(table)
@@ -191,7 +194,7 @@ export const getProduct = async (productId: string, category: 'women' | 'girls' 
       }
       throw error;
     }
-    
+
     return data ? transformProduct(data, category) : null;
   } catch (error) {
     console.error(`Error fetching product ${productId} from ${table}:`, error);
@@ -210,9 +213,9 @@ export const fetchProductById = async (productId: string, preferredCategory?: 'w
   // If a preferred category is provided, search it first.
   const orderedTables = preferredCategory
     ? [
-        ...tables.filter(t => t.category === preferredCategory),
-        ...tables.filter(t => t.category !== preferredCategory)
-      ]
+      ...tables.filter(t => t.category === preferredCategory),
+      ...tables.filter(t => t.category !== preferredCategory)
+    ]
     : tables;
 
   for (const table of orderedTables) {
@@ -250,8 +253,8 @@ export const searchProducts = async (query: string): Promise<EnhancedProduct[]> 
   try {
     const allProducts = await fetchAllProducts();
     const searchTerm = query.toLowerCase();
-    
-    return allProducts.filter(product => 
+
+    return allProducts.filter(product =>
       product.name.toLowerCase().includes(searchTerm) ||
       product.description.toLowerCase().includes(searchTerm) ||
       product.material.toLowerCase().includes(searchTerm) ||

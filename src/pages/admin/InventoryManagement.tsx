@@ -6,21 +6,22 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import { Switch } from '@/components/ui/switch';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table';
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { 
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -42,12 +43,12 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  ArrowLeft, 
-  Package, 
-  Search, 
-  Edit, 
-  Trash2, 
+import {
+  ArrowLeft,
+  Package,
+  Search,
+  Edit,
+  Trash2,
   MoreVertical,
   Plus,
   Eye,
@@ -70,6 +71,7 @@ interface SupabaseProduct {
   image?: string;
   created_at?: string;
   category: CategoryType;
+  size_required?: boolean;
 }
 
 const InventoryManagement = () => {
@@ -164,7 +166,7 @@ const InventoryManagement = () => {
 
       // Remove from local state
       setProducts(prev => prev.filter(p => p.productId !== productId));
-      
+
       toast.success('Product deleted', {
         description: `${productName} has been removed from inventory`
       });
@@ -199,7 +201,8 @@ const InventoryManagement = () => {
       description: product.description,
       status: product.status,
       sizes: product.sizes,
-      colors: product.colors
+      colors: product.colors,
+      size_required: product.size_required !== false,
     });
     setEditDialogOpen(true);
   };
@@ -218,7 +221,8 @@ const InventoryManagement = () => {
           description: editFormData.description,
           status: editFormData.status,
           sizes: editFormData.sizes,
-          colors: editFormData.colors
+          colors: editFormData.colors,
+          size_required: editFormData.size_required,
         })
         .eq('productId', productToEdit.productId);
 
@@ -227,8 +231,8 @@ const InventoryManagement = () => {
       }
 
       // Update local state
-      setProducts(prev => prev.map(p => 
-        p.productId === productToEdit.productId 
+      setProducts(prev => prev.map(p =>
+        p.productId === productToEdit.productId
           ? { ...p, ...editFormData }
           : p
       ));
@@ -362,8 +366,8 @@ const InventoryManagement = () => {
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span>
-                    {selectedCategory === 'all' ? 'All Products' : 
-                     selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1) + ' Products'}
+                    {selectedCategory === 'all' ? 'All Products' :
+                      selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1) + ' Products'}
                   </span>
                   <Badge variant="outline">
                     {filteredProducts.length} items
@@ -389,8 +393,8 @@ const InventoryManagement = () => {
                         <TableRow key={product.productId}>
                           <TableCell>
                             {product.image ? (
-                              <img 
-                                src={product.image} 
+                              <img
+                                src={product.image}
                                 alt={product.name}
                                 className="w-12 h-12 object-cover rounded-md border"
                                 onError={(e) => {
@@ -454,7 +458,7 @@ const InventoryManagement = () => {
                                   <Edit size={14} className="mr-2" />
                                   Edit
                                 </DropdownMenuItem>
-                                <DropdownMenuItem 
+                                <DropdownMenuItem
                                   onClick={() => openDeleteDialog(product)}
                                   className="text-destructive focus:text-destructive"
                                 >
@@ -493,7 +497,7 @@ const InventoryManagement = () => {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel disabled={deleteLoading !== null}>Cancel</AlertDialogCancel>
-              <AlertDialogAction 
+              <AlertDialogAction
                 onClick={() => {
                   if (productToDelete) {
                     handleDeleteProduct(productToDelete.productId, productToDelete.name, productToDelete.category);
@@ -528,8 +532,8 @@ const InventoryManagement = () => {
               <div className="space-y-4">
                 {productToView.image && (
                   <div className="flex justify-center">
-                    <img 
-                      src={productToView.image} 
+                    <img
+                      src={productToView.image}
                       alt={productToView.name}
                       className="w-48 h-48 object-cover rounded-lg border"
                     />
@@ -559,6 +563,10 @@ const InventoryManagement = () => {
                   <div>
                     <Label className="text-sm font-medium text-muted-foreground">Colors</Label>
                     <p className="text-sm">{productToView.colors.join(', ') || 'None'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Size Required</Label>
+                    <p className="text-sm">{productToView.size_required !== false ? 'Yes' : 'No'}</p>
                   </div>
                   <div className="col-span-2">
                     <Label className="text-sm font-medium text-muted-foreground">Sizes</Label>
@@ -631,9 +639,9 @@ const InventoryManagement = () => {
                     <Input
                       id="edit-colors"
                       value={editFormData.colors?.join(', ') || ''}
-                      onChange={(e) => setEditFormData(prev => ({ 
-                        ...prev, 
-                        colors: e.target.value.split(',').map(c => c.trim()).filter(c => c) 
+                      onChange={(e) => setEditFormData(prev => ({
+                        ...prev,
+                        colors: e.target.value.split(',').map(c => c.trim()).filter(c => c)
                       }))}
                       placeholder="Red, Blue, Green"
                     />
@@ -643,11 +651,28 @@ const InventoryManagement = () => {
                     <Input
                       id="edit-sizes"
                       value={editFormData.sizes?.join(', ') || ''}
-                      onChange={(e) => setEditFormData(prev => ({ 
-                        ...prev, 
-                        sizes: e.target.value.split(',').map(s => s.trim()).filter(s => s) 
+                      onChange={(e) => setEditFormData(prev => ({
+                        ...prev,
+                        sizes: e.target.value.split(',').map(s => s.trim()).filter(s => s)
                       }))}
                       placeholder="S, M, L, XL"
+                    />
+                  </div>
+                  <div className="col-span-2 flex items-center justify-between rounded-lg border border-border p-3">
+                    <div>
+                      <Label className="text-sm font-medium" htmlFor="edit-size-required">Size Required</Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {editFormData.size_required !== false
+                          ? 'Customers must select a size'
+                          : 'No size selection needed'}
+                      </p>
+                    </div>
+                    <Switch
+                      id="edit-size-required"
+                      checked={editFormData.size_required !== false}
+                      onCheckedChange={(checked) =>
+                        setEditFormData(prev => ({ ...prev, size_required: checked }))
+                      }
                     />
                   </div>
                 </div>

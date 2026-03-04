@@ -14,7 +14,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
   });
 
   const login = (username: string, password: string): boolean => {
-    if (username === 'sanjayn' && password === 'N.Sanjay@2005') {
+    if (username === 'saravana' && password === 'saravanaa') {
       setIsLoggedIn(true);
       sessionStorage.setItem('adminLoggedIn', 'true');
       return true;

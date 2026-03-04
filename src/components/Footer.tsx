@@ -8,7 +8,7 @@ import logoImg from '@/assert/logo.png';
 const Footer = () => {
   return (
     <footer className="bg-foreground text-background">
-      
+
 
       {/* Main Footer */}
       <div className="py-12">
@@ -82,8 +82,8 @@ const Footer = () => {
                     Contact Us
                   </Link>
                 </li>
-                
-                
+
+
               </ul>
             </div>
 
@@ -126,7 +126,7 @@ const Footer = () => {
               rel="noopener noreferrer"
               className="text-background/60 hover:text-primary transition-colors"
             >
-              Developed by Sanjay N
+              Developed by Sanjay N and team
             </a>
           </div>
         </div>

@@ -13,6 +13,7 @@ import { fetchProductById, EnhancedProduct } from '@/services/productService';
 import { initiateRazorpayPayment } from '@/services/razorpayService';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
+import { useCart } from '@/context/CartContext';
 import SEO from '@/components/SEO';
 
 const BuyNowPage = () => {
@@ -20,9 +21,10 @@ const BuyNowPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { state: cartState, clearCart } = useCart();
 
   const [product, setProduct] = useState<EnhancedProduct | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!!id); // only load if single product
   const [submitting, setSubmitting] = useState(false);
 
   // Get product details from URL params
@@ -49,7 +51,7 @@ const BuyNowPage = () => {
   useEffect(() => {
     const loadProduct = async () => {
       if (!id) return;
-      
+
       try {
         setLoading(true);
         const productData = await fetchProductById(id);
@@ -79,7 +81,13 @@ const BuyNowPage = () => {
   };
 
   // Calculate totals
-  const subtotal = product ? product.price * formData.quantity : 0;
+  // If we have a single product ID, calculate for that product. Otherwise calculate for cart
+  const isCartCheckout = !id;
+
+  const subtotal = isCartCheckout
+    ? cartState.items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0)
+    : (product ? product.price * formData.quantity : 0);
+
   const discount = appliedCoupon ? Math.min(appliedCoupon.discount_amount, subtotal) : 0;
   const total = subtotal - discount;
 
@@ -126,7 +134,7 @@ const BuyNowPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!user) {
       toast.error('Please login to continue');
       navigate('/login');
@@ -134,8 +142,8 @@ const BuyNowPage = () => {
     }
 
     // Validation
-    if (!formData.fullName || !formData.phoneNumber || !formData.email || 
-        !formData.deliveryAddress || !formData.city || !formData.pincode) {
+    if (!formData.fullName || !formData.phoneNumber || !formData.email ||
+      !formData.deliveryAddress || !formData.city || !formData.pincode) {
       toast.error('Please fill all required fields');
       return;
     }
@@ -152,16 +160,48 @@ const BuyNowPage = () => {
 
     try {
       setSubmitting(true);
-      
+
+      // We pass the full array of items if cart checkout, or a single item array if direct checkout
+      // The current initiateRazorpayPayment expects a single object for legacy reasons, 
+      // but let's pass an array of items as a new property `cartItems` or handle it gracefully
+      let checkoutItems = [];
+
+      if (isCartCheckout) {
+        checkoutItems = cartState.items.map(item => ({
+          productId: item.product.id,
+          productName: item.product.name,
+          productImage: item.product.images?.[0] || '',
+          selectedSize: item.size,
+          selectedColor: item.color,
+          quantity: item.quantity,
+          price: item.product.price,
+        }));
+      } else if (product) {
+        checkoutItems = [{
+          productId: product.id,
+          productName: product.name,
+          productImage: product.image,
+          selectedSize,
+          selectedColor,
+          quantity: formData.quantity,
+          price: product.price,
+        }];
+      }
+
       // Prepare order data for Razorpay
       const orderData = {
-        productId: product!.id,
-        productName: product!.name,
-        productImage: product!.image,
-        selectedSize,
-        selectedColor,
-        quantity: formData.quantity,
-        price: product!.price,
+        // Fallbacks for the legacy handler
+        productId: checkoutItems[0]?.productId || 'CART',
+        productName: isCartCheckout ? 'Cart Checkout' : checkoutItems[0]?.productName || '',
+        productImage: checkoutItems[0]?.productImage || '',
+        selectedSize: isCartCheckout ? '' : checkoutItems[0]?.selectedSize || '',
+        selectedColor: isCartCheckout ? '' : checkoutItems[0]?.selectedColor || '',
+        quantity: isCartCheckout ? checkoutItems.reduce((s, i) => s + i.quantity, 0) : formData.quantity,
+        price: isCartCheckout ? subtotal : product!.price,
+
+        // New array for future support
+        items: checkoutItems,
+
         total: total,
         discount: discount,
         customerName: formData.fullName,
@@ -170,14 +210,19 @@ const BuyNowPage = () => {
         deliveryAddress: formData.deliveryAddress,
         city: formData.city,
         pincode: formData.pincode,
+        isCartCheckout // Pass flag
       };
 
       // Initiate Razorpay payment
       initiateRazorpayPayment(
         orderData,
-        (paymentId: string, orderId: string) => {
+        async (paymentId: string, orderId: string) => {
           // Payment success callback
           toast.success('Payment successful!');
+
+          if (isCartCheckout) {
+            await clearCart();
+          }
 
           // Navigate to order success page
           navigate(`/order-success/${orderId}`);
@@ -205,12 +250,23 @@ const BuyNowPage = () => {
     );
   }
 
-  if (!product) {
+  if (!isCartCheckout && !product) {
     return (
       <MainLayout>
         <div className="container mx-auto px-4 py-16 text-center">
           <h1 className="text-2xl font-bold mb-4">Product not found</h1>
           <Button onClick={() => navigate('/shop')}>Continue Shopping</Button>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (isCartCheckout && cartState.items.length === 0) {
+    return (
+      <MainLayout>
+        <div className="container mx-auto px-4 py-16 text-center">
+          <h1 className="text-2xl font-bold mb-4">Your cart is empty</h1>
+          <Button onClick={() => navigate('/shop')}>Start Shopping</Button>
         </div>
       </MainLayout>
     );
@@ -376,9 +432,9 @@ const BuyNowPage = () => {
                   </div>
 
                   {/* Submit Button */}
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
+                  <Button
+                    type="submit"
+                    className="w-full"
                     size="lg"
                     disabled={submitting}
                   >
@@ -404,57 +460,88 @@ const BuyNowPage = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Product Details */}
-                <div className="flex gap-4">
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="w-20 h-20 object-cover rounded"
-                    onError={(e) => {
-                      e.currentTarget.src = '/placeholder-image.jpg';
-                    }}
-                  />
-                  <div className="flex-1">
-                    <h4 className="font-medium text-sm line-clamp-2">{product.name}</h4>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Category: {product.category}
-                    </p>
-                    {selectedSize && (
-                      <p className="text-xs text-muted-foreground">Size: {selectedSize}</p>
-                    )}
-                    {selectedColor && (
-                      <p className="text-xs text-muted-foreground">Color: {selectedColor}</p>
-                    )}
+                {isCartCheckout ? (
+                  <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-2">
+                    {cartState.items.map((item, index) => (
+                      <div key={item.id || index} className="flex gap-4 relative">
+                        <img
+                          src={item.product.images?.[0] || '/placeholder-image.jpg'}
+                          alt={item.product.name}
+                          className="w-16 h-16 object-cover rounded"
+                          onError={(e) => {
+                            e.currentTarget.src = '/placeholder-image.jpg';
+                          }}
+                        />
+                        <div className="flex-1 text-sm">
+                          <h4 className="font-medium line-clamp-2 leading-tight">{item.product.name}</h4>
+                          <em className="text-xs text-muted-foreground block mt-1">
+                            {item.quantity} × ₹{item.product.price.toLocaleString()}
+                          </em>
+                          {(item.size || item.color) && (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {item.size && `Size: ${item.size} `}
+                              {item.color && `Color: ${item.color}`}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
+                ) : (
+                  <>
+                    <div className="flex gap-4">
+                      <img
+                        src={product!.image}
+                        alt={product!.name}
+                        className="w-20 h-20 object-cover rounded"
+                        onError={(e) => {
+                          e.currentTarget.src = '/placeholder-image.jpg';
+                        }}
+                      />
+                      <div className="flex-1">
+                        <h4 className="font-medium text-sm line-clamp-2">{product!.name}</h4>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Category: {product!.category}
+                        </p>
+                        {selectedSize && (
+                          <p className="text-xs text-muted-foreground">Size: {selectedSize}</p>
+                        )}
+                        {selectedColor && (
+                          <p className="text-xs text-muted-foreground">Color: {selectedColor}</p>
+                        )}
+                      </div>
+                    </div>
 
-                <Separator />
+                    <Separator />
 
-                {/* Quantity Selector */}
-                <div>
-                  <Label>Quantity</Label>
-                  <div className="flex items-center gap-3 mt-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleQuantityChange(-1)}
-                      disabled={formData.quantity <= 1}
-                    >
-                      -
-                    </Button>
-                    <span className="text-lg font-semibold w-12 text-center">
-                      {formData.quantity}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleQuantityChange(1)}
-                    >
-                      +
-                    </Button>
-                  </div>
-                </div>
+                    {/* Quantity Selector (Only for Direct Buy Now) */}
+                    <div>
+                      <Label>Quantity</Label>
+                      <div className="flex items-center gap-3 mt-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleQuantityChange(-1)}
+                          disabled={formData.quantity <= 1}
+                        >
+                          -
+                        </Button>
+                        <span className="text-lg font-semibold w-12 text-center">
+                          {formData.quantity}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleQuantityChange(1)}
+                        >
+                          +
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 <Separator />
 
@@ -462,12 +549,14 @@ const BuyNowPage = () => {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>Amount</span>
-                    <span>₹{product.price.toLocaleString()}</span>
+                    <span>₹{isCartCheckout ? cartState.items.reduce((s, i) => s + (i.product.price * i.quantity), 0).toLocaleString() : product!.price.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Quantity</span>
-                    <span>×{formData.quantity}</span>
-                  </div>
+                  {!isCartCheckout && (
+                    <div className="flex justify-between text-sm">
+                      <span>Quantity</span>
+                      <span>×{formData.quantity}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-sm">
                     <span>Subtotal</span>
                     <span>₹{subtotal.toLocaleString()}</span>

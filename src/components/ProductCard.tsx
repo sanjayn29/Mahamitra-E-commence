@@ -1,17 +1,80 @@
-import { Link } from 'react-router-dom';
-import { Star } from 'lucide-react';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ShoppingCart, Loader2 } from 'lucide-react';
 import { EnhancedProduct } from '@/services/productService';
 import { RatingDisplay } from '@/components/Rating';
 import { FavoriteButton } from '@/components/FavoriteButton';
+import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
+import { toast } from 'sonner';
 
 interface ProductCardProps {
   product: EnhancedProduct;
 }
 
 const ProductCard = ({ product }: ProductCardProps) => {
+  const [addingToCart, setAddingToCart] = useState(false);
+  const { addItem } = useCart();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
   const discount = product.cost && product.cost !== product.price
     ? Math.round(((product.cost - product.price) / product.cost) * 100)
     : 0;
+
+  const handleAddToCart = async (e: React.MouseEvent) => {
+    e.preventDefault(); // Don't follow the Link
+    e.stopPropagation();
+
+    if (!user) {
+      toast.error('Please login to add items to cart');
+      navigate('/login');
+      return;
+    }
+
+    if (!product.inStock) {
+      toast.error('This item is out of stock');
+      return;
+    }
+
+    // If size is required and there are multiple size options, go to product page
+    const hasMultipleSizes = product.sizes && product.sizes.length > 1 &&
+      !(product.sizes.length === 1 && product.sizes[0] === 'Free Size');
+    const sizeRequired = product.size_required !== false;
+
+    if (sizeRequired && hasMultipleSizes) {
+      toast.info('Please select a size first', { description: 'Click the product to choose your size.' });
+      navigate(`/product/${product.id}`);
+      return;
+    }
+
+    try {
+      setAddingToCart(true);
+      const size = (!sizeRequired || !hasMultipleSizes) ? (product.sizes?.[0] || '') : '';
+      const color = product.colors?.[0] || '';
+
+      await addItem(
+        {
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          originalPrice: product.cost,
+          category: product.category,
+          image: product.image,
+          images: product.images,
+          description: product.description,
+          inStock: product.inStock,
+        } as any,
+        1,
+        size,
+        color
+      );
+    } catch (error) {
+      console.error('Add to cart error:', error);
+    } finally {
+      setAddingToCart(false);
+    }
+  };
 
   return (
     <Link to={`/product/${product.id}`} className="group block">
@@ -23,7 +86,6 @@ const ProductCard = ({ product }: ProductCardProps) => {
             alt={product.name}
             className="w-full h-full object-cover"
             onError={(e) => {
-              // Fallback for broken images
               e.currentTarget.src = '/placeholder-image.jpg';
             }}
           />
@@ -44,12 +106,27 @@ const ProductCard = ({ product }: ProductCardProps) => {
 
           {/* Favorite Button */}
           <div className="absolute top-3 right-3">
-            <FavoriteButton 
-              productId={product.id} 
+            <FavoriteButton
+              productId={product.id}
               productType={product.category}
               size="sm"
               className="bg-white/80 hover:bg-white shadow-sm"
             />
+          </div>
+
+          {/* Add to Cart Button — appears on hover */}
+          <div className="absolute bottom-0 left-0 right-0 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+            <button
+              onClick={handleAddToCart}
+              disabled={addingToCart || !product.inStock}
+              className="w-full py-3 bg-primary text-primary-foreground font-sans text-sm font-semibold flex items-center justify-center gap-2 hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            >
+              {addingToCart ? (
+                <><Loader2 size={16} className="animate-spin" /> Adding...</>
+              ) : (
+                <><ShoppingCart size={16} /> Add to Cart</>
+              )}
+            </button>
           </div>
         </div>
 
@@ -64,7 +141,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
 
           {/* Rating */}
           <div className="mb-2">
-            <RatingDisplay 
+            <RatingDisplay
               productId={product.id}
               productType={product.category}
               size="sm"

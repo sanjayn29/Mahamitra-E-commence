@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Star, Heart, Share2, Truck, RefreshCw, Shield, ChevronLeft, Loader2, ShoppingBag } from 'lucide-react';
+import { Star, Heart, Share2, Truck, RefreshCw, Shield, ChevronLeft, Loader2, ShoppingBag, ShoppingCart } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
 import ProductCard from '@/components/ProductCard';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,8 @@ import { FavoriteButton } from '@/components/FavoriteButton';
 import { Comments } from '@/components/Comments';
 import { useProduct } from '@/hooks/useProducts';
 import { fetchProductsByCategory, EnhancedProduct } from '@/services/productService';
+import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import SEO from '@/components/SEO';
 
@@ -16,12 +18,15 @@ const ProductPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { product, loading: productLoading, error } = useProduct(id || null);
+  const { addItem, setCartOpen } = useCart();
+  const { user } = useAuth();
 
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
   const [relatedProducts, setRelatedProducts] = useState<EnhancedProduct[]>([]);
   const [relatedLoading, setRelatedLoading] = useState(false);
+  const [addingToCart, setAddingToCart] = useState(false);
 
   // Fetch related products when product loads
   useEffect(() => {
@@ -43,27 +48,64 @@ const ProductPage = () => {
     fetchRelated();
   }, [product]);
 
+  const handleAddToCart = async () => {
+    if (!user) {
+      toast.error('Please login to add items to cart');
+      navigate('/login');
+      return;
+    }
+
+    if (!product || !product.inStock) return;
+
+    // Require size if size_required is true and product has multiple sizes
+    const sizeRequired = product.size_required !== false;
+    const hasRealSizes = product.sizes && product.sizes.length > 0 &&
+      !(product.sizes.length === 1 && product.sizes[0] === 'Free Size');
+
+    if (sizeRequired && hasRealSizes && !selectedSize) {
+      toast.error('Please select a size before adding to cart');
+      return;
+    }
+
+    try {
+      setAddingToCart(true);
+      await addItem(
+        {
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          originalPrice: product.cost,
+          category: product.category,
+          image: product.image,
+          images: product.images,
+          description: product.description,
+          inStock: product.inStock,
+        } as any,
+        1,
+        selectedSize || undefined,
+        selectedColor || undefined
+      );
+      setCartOpen(true);
+    } catch (error) {
+      console.error('Add to cart error:', error);
+    } finally {
+      setAddingToCart(false);
+    }
+  };
+
   const handleShare = async () => {
     const shareUrl = `https://www.mahamitra.app/product/${product?.id}`;
     const shareText = `Check out ${product?.name} at Mahamitra - Luxury Women's Apparel`;
 
     try {
-      // Check if Web Share API is available
       if (navigator.share) {
-        await navigator.share({
-          title: 'Mahamitra',
-          text: shareText,
-          url: shareUrl,
-        });
+        await navigator.share({ title: 'Mahamitra', text: shareText, url: shareUrl });
       } else {
-        // Fallback: Copy to clipboard
         await navigator.clipboard.writeText(shareUrl);
         toast.success('Link copied to clipboard!');
       }
     } catch (error: any) {
       if (error.name !== 'AbortError') {
-        console.error('Error sharing:', error);
-        // Fallback to clipboard
         try {
           await navigator.clipboard.writeText(shareUrl);
           toast.success('Link copied to clipboard!');
@@ -106,6 +148,12 @@ const ProductPage = () => {
   const discount = product.cost && product.cost !== product.price
     ? Math.round(((product.cost - product.price) / product.cost) * 100)
     : 0;
+
+  // Determine if size selector should be shown
+  const sizeRequired = product.size_required !== false;
+  const hasRealSizes = product.sizes && product.sizes.length > 0 &&
+    !(product.sizes.length === 1 && product.sizes[0] === 'Free Size');
+  const showSizeSelector = sizeRequired && hasRealSizes;
 
   return (
     <MainLayout>
@@ -156,9 +204,8 @@ const ProductPage = () => {
                   <button
                     key={index}
                     onClick={() => setSelectedImage(index)}
-                    className={`w-20 h-24 rounded-lg overflow-hidden border-2 transition-colors ${
-                      selectedImage === index ? 'border-primary' : 'border-transparent'
-                    }`}
+                    className={`w-20 h-24 rounded-lg overflow-hidden border-2 transition-colors ${selectedImage === index ? 'border-primary' : 'border-transparent'
+                      }`}
                   >
                     <img
                       src={image}
@@ -196,7 +243,7 @@ const ProductPage = () => {
 
             {/* Rating */}
             <div className="flex items-center gap-3">
-              <RatingDisplay 
+              <RatingDisplay
                 productId={product.id}
                 productType={product.category}
                 size="md"
@@ -234,28 +281,21 @@ const ProductPage = () => {
               </p>
             )}
 
-            {/* Size Selection */}
-            {product.sizes && product.sizes.length > 0 && (
+            {/* Size Selection — only shown when size_required and real sizes exist */}
+            {showSizeSelector && (
               <div>
                 <h3 className="font-serif text-lg font-medium mb-3">
-                  Select Size {product.sizes.length > 1 ? '*' : ''}
+                  Select Size <span className="text-destructive">*</span>
                 </h3>
-                
-                {/* Debug info */}
-                <div className="mb-2 p-2 bg-gray-50 rounded text-xs">
-                  Available sizes: {JSON.stringify(product.sizes)}
-                </div>
-                
                 <div className="flex flex-wrap gap-3">
                   {product.sizes.map((size) => (
                     <button
                       key={size}
                       onClick={() => setSelectedSize(size)}
-                      className={`min-w-[60px] h-10 px-4 rounded-lg border-2 font-sans text-sm transition-all ${
-                        selectedSize === size
+                      className={`min-w-[60px] h-10 px-4 rounded-lg border-2 font-sans text-sm transition-all ${selectedSize === size
                           ? 'border-primary bg-primary text-primary-foreground'
                           : 'border-border hover:border-primary'
-                      }`}
+                        }`}
                     >
                       {size}
                     </button>
@@ -265,40 +305,50 @@ const ProductPage = () => {
             )}
 
             {/* Color Selection */}
-            {product.colors && product.colors.length > 0 && (
-              <div>
-                <h3 className="font-serif text-lg font-medium mb-3">
-                  Select Color {product.colors.length > 1 ? '*' : ''}
-                </h3>
-                
-                {/* Debug info */}
-                <div className="mb-2 p-2 bg-gray-50 rounded text-xs">
-                  Available colors: {JSON.stringify(product.colors)}
+            {product.colors && product.colors.length > 0 &&
+              !(product.colors.length === 1 && product.colors[0] === 'Default') && (
+                <div>
+                  <h3 className="font-serif text-lg font-medium mb-3">
+                    Select Color
+                  </h3>
+                  <div className="flex flex-wrap gap-3">
+                    {product.colors.map((color) => (
+                      <button
+                        key={color}
+                        onClick={() => setSelectedColor(color)}
+                        className={`px-4 py-2 rounded-lg border-2 font-sans text-sm transition-all ${selectedColor === color
+                            ? 'border-primary bg-primary/10'
+                            : 'border-border hover:border-primary'
+                          }`}
+                      >
+                        {color}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                
-                <div className="flex flex-wrap gap-3">
-                  {product.colors.map((color) => (
-                    <button
-                      key={color}
-                      onClick={() => setSelectedColor(color)}
-                      className={`px-4 py-2 rounded-lg border-2 font-sans text-sm transition-all ${
-                        selectedColor === color
-                          ? 'border-primary bg-primary/10'
-                          : 'border-border hover:border-primary'
-                      }`}
-                    >
-                      {color}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+              )}
 
-            {/* Wishlist */}
-            <div className="flex gap-4">
+            {/* Action Buttons */}
+            <div className="flex gap-3 flex-wrap">
+              {/* Add to Cart */}
               <Button
                 size="lg"
-                className="flex-1"
+                variant="outline"
+                className="flex-1 min-w-[140px]"
+                onClick={handleAddToCart}
+                disabled={!product.inStock || addingToCart}
+              >
+                {addingToCart ? (
+                  <><Loader2 size={18} className="mr-2 animate-spin" /> Adding...</>
+                ) : (
+                  <><ShoppingCart size={18} className="mr-2" /> Add to Cart</>
+                )}
+              </Button>
+
+              {/* Buy Now */}
+              <Button
+                size="lg"
+                className="flex-1 min-w-[140px]"
                 onClick={() => {
                   const params = new URLSearchParams();
                   if (selectedSize) params.append('size', selectedSize);
@@ -307,11 +357,11 @@ const ProductPage = () => {
                 }}
                 disabled={!product.inStock}
               >
-                <ShoppingBag size={20} className="mr-2" />
+                <ShoppingBag size={18} className="mr-2" />
                 Buy Now
               </Button>
-              
-              <FavoriteButton 
+
+              <FavoriteButton
                 productId={product.id}
                 productType={product.category}
                 size="md"
@@ -320,9 +370,9 @@ const ProductPage = () => {
               />
 
               {/* Share */}
-              <Button 
-                variant="outline" 
-                size="icon" 
+              <Button
+                variant="outline"
+                size="icon"
                 className="h-12 w-12"
                 onClick={handleShare}
               >
@@ -354,21 +404,19 @@ const ProductPage = () => {
           </div>
         </div>
 
-        {/* Product Reviews and Comments */}
+        {/* Reviews and Comments */}
         <div className="mt-16 space-y-12">
-          {/* User Rating Section */}
           <div className="bg-muted/30 rounded-lg p-8">
             <h3 className="font-serif text-2xl font-semibold mb-6">Rate this Product</h3>
-            <Rating 
+            <Rating
               productId={product.id}
               productType={product.category}
               showUserRating={true}
             />
           </div>
 
-          {/* Comments Section */}
           <div>
-            <Comments 
+            <Comments
               productId={product.id}
               productType={product.category}
             />

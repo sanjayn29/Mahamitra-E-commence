@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
 import { ArrowLeft, Package, Upload, X, ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -25,7 +26,8 @@ const AddProductPage = () => {
     description: '',
     status: 'available',
     sizes: '',
-    colors: ''
+    colors: '',
+    size_required: true,
   });
 
   const categories = [
@@ -70,7 +72,7 @@ const AddProductPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.productId || !formData.name || !formData.category) {
       toast.error('Required fields missing', {
         description: 'Please fill in Product ID, Name, and Category'
@@ -79,17 +81,17 @@ const AddProductPage = () => {
     }
 
     setLoading(true);
-    
+
     try {
       let imageUrl = '';
-      
+
       // Skip image upload for now - just use preview URL
       if (imageFile) {
         imageUrl = imagePreview;
       }
 
       const tableName = `${formData.category}_products`;
-      
+
       const productData = {
         productId: formData.productId,
         name: formData.name,
@@ -99,7 +101,8 @@ const AddProductPage = () => {
         status: formData.status,
         sizes: formData.sizes.split(',').map(s => s.trim()).filter(s => s),
         colors: formData.colors.split(',').map(c => c.trim()).filter(c => c),
-        image: imageUrl
+        image: imageUrl,
+        size_required: formData.size_required,
       };
 
       console.log('Attempting to insert into table:', tableName);
@@ -129,7 +132,8 @@ const AddProductPage = () => {
         description: '',
         status: 'available',
         sizes: '',
-        colors: ''
+        colors: '',
+        size_required: true,
       });
       setImageFile(null);
       setImagePreview('');
@@ -204,9 +208,9 @@ const AddProductPage = () => {
                     placeholder="MMWOM0001"
                     className="flex-1"
                   />
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={generateProductId}
                     disabled={!formData.category}
                   >
@@ -313,6 +317,27 @@ const AddProductPage = () => {
                   className="font-sans"
                 />
                 <p className="text-xs text-muted-foreground">Separate sizes with commas</p>
+              </div>
+
+              {/* Size Required Toggle */}
+              <div className="flex items-center justify-between rounded-lg border border-border p-4">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-medium" htmlFor="size-required">
+                    Size Required
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {formData.size_required
+                      ? 'Customers must select a size before adding to cart'
+                      : 'Customers can add to cart without selecting a size'}
+                  </p>
+                </div>
+                <Switch
+                  id="size-required"
+                  checked={formData.size_required}
+                  onCheckedChange={(checked) =>
+                    setFormData(prev => ({ ...prev, size_required: checked }))
+                  }
+                />
               </div>
 
               {/* Colors */}

@@ -49,7 +49,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
   switch (action.type) {
     case 'ADD_ITEM': {
       const existingIndex = state.items.findIndex(
-        item => 
+        item =>
           item.product.id === action.payload.product.id &&
           item.size === action.payload.size &&
           item.color === action.payload.color
@@ -57,7 +57,10 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 
       if (existingIndex > -1) {
         const newItems = [...state.items];
-        newItems[existingIndex].quantity += action.payload.quantity;
+        newItems[existingIndex] = {
+          ...newItems[existingIndex],
+          quantity: newItems[existingIndex].quantity + action.payload.quantity
+        };
         return { ...state, items: newItems };
       }
 
@@ -67,12 +70,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
     case 'REMOVE_ITEM': {
       return {
         ...state,
-        items: state.items.filter(
-          item =>
-            !(item.product.id === action.payload.productId &&
-              item.size === action.payload.size &&
-              item.color === action.payload.color)
-        )
+        items: state.items.filter(item => item.id !== action.payload.cartItemId)
       };
     }
 
@@ -80,26 +78,22 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
       if (action.payload.quantity <= 0) {
         return {
           ...state,
-          items: state.items.filter(
-            item =>
-              !(item.product.id === action.payload.productId &&
-                item.size === action.payload.size &&
-                item.color === action.payload.color)
-          )
+          items: state.items.filter(item => item.id !== action.payload.cartItemId)
         };
       }
 
       return {
         ...state,
         items: state.items.map(item =>
-          item.product.id === action.payload.productId &&
-          item.size === action.payload.size &&
-          item.color === action.payload.color
+          item.id === action.payload.cartItemId
             ? { ...item, quantity: action.payload.quantity }
             : item
         )
       };
     }
+
+    case 'SET_ITEMS':
+      return { ...state, items: action.payload };
 
     case 'CLEAR_CART':
       return { ...state, items: [] };
@@ -109,6 +103,9 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 
     case 'SET_CART_OPEN':
       return { ...state, isOpen: action.payload };
+
+    case 'SET_LOADING':
+      return { ...state, loading: action.payload };
 
     default:
       return state;
@@ -127,26 +124,20 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const loadCartItems = async () => {
     if (!user) {
-      console.log('No user, skipping cart load');
       return;
     }
-
-    console.log('Loading cart items for user:', user.id);
 
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
       const cartItems = await cartService.getCartItems();
-      
-      console.log('Cart items from database:', cartItems);
-      
+
       // Fetch actual product details for each cart item
       const transformedItems: CartItem[] = await Promise.all(
         cartItems.map(async (item: DatabaseCartItem) => {
           try {
-            // Dynamically import productService to avoid circular dependencies
             const { getProduct } = await import('@/services/productService');
             const productDetails = await getProduct(item.product_id, item.product_type as any);
-            
+
             if (productDetails) {
               return {
                 id: item.id,
@@ -167,8 +158,6 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
                 color: item.color || '',
               };
             } else {
-              // Product not found, return placeholder
-              console.warn(`Product not found: ${item.product_id}`);
               return {
                 id: item.id,
                 product: {
@@ -184,7 +173,6 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             }
           } catch (error) {
             console.error(`Error fetching product ${item.product_id}:`, error);
-            // Return placeholder on error
             return {
               id: item.id,
               product: {
@@ -201,7 +189,6 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         })
       );
 
-      console.log('Transformed cart items:', transformedItems);
       dispatch({ type: 'SET_ITEMS', payload: transformedItems });
     } catch (error) {
       console.error('Error loading cart items:', error);
@@ -213,18 +200,11 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   // Load cart items when auth is loaded and user is available
   useEffect(() => {
-    console.log('Cart effect running - authLoading:', authLoading, 'user:', user?.id);
-    
-    if (authLoading) {
-      console.log('Auth still loading, waiting...');
-      return;
-    }
-    
+    if (authLoading) return;
+
     if (user) {
-      console.log('User logged in, loading cart');
       loadCartItems();
     } else {
-      console.log('No user, clearing cart');
       dispatch({ type: 'CLEAR_CART' });
     }
   }, [user, authLoading]);
@@ -237,22 +217,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       await cartService.addToCart(product.id, product.category, quantity, size, color);
-      
-      // Add to local state immediately for better UX
-      dispatch({ type: 'ADD_ITEM', payload: { 
-        product, 
-        quantity, 
-        size: size || 'One Size', 
-        color: color || 'Default' 
-      } });
-      
-      // Reload to get the actual database state
-      await loadCartItems();
-      
+      await loadCartItems(); // Reload to get the actual database state
       toast.success(`${product.name} added to cart!`);
     } catch (error) {
       console.error('Error adding to cart:', error);
-      console.log('Product details:', { productId: product.id, category: product.category, quantity, size, color });
       toast.error('Failed to add item to cart');
     }
   };
@@ -264,15 +232,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
-      console.log('Removing cart item with ID:', cartItemId);
       await cartService.removeFromCart(cartItemId);
-      
-      // Update local state
       dispatch({ type: 'REMOVE_ITEM', payload: { cartItemId } });
-      
-      // Reload to ensure consistency
-      await loadCartItems();
-      
       toast.success('Item removed from cart');
     } catch (error) {
       console.error('Error removing from cart:', error);
@@ -284,7 +245,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     if (!user) return;
 
     try {
-      await cartService.updateQuantity(cartItemId, quantity);
+      await cartService.updateCartItemQuantity(cartItemId, quantity);
       dispatch({ type: 'UPDATE_QUANTITY', payload: { cartItemId, quantity } });
     } catch (error) {
       console.error('Error updating quantity:', error);
@@ -329,10 +290,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const addToCart = async (
-    productId: string, 
-    productType: string, 
-    quantity: number = 1, 
-    size?: string, 
+    productId: string,
+    productType: string,
+    quantity: number = 1,
+    size?: string,
     color?: string
   ) => {
     if (!user) {
