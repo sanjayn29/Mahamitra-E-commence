@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import AddressBook from '@/components/AddressBook';
+import CustomerFinancialSummary from '@/components/finance/CustomerFinancialSummary';
 import MainLayout from '@/layouts/MainLayout';
 import { toast } from 'sonner';
 import SEO from '@/components/SEO';
@@ -341,6 +343,19 @@ const ProfilePage = () => {
               </CardContent>
             </Card>
           </div>
+
+          <CustomerFinancialSummary userId={user.id} />
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <MapPin size={20} /> Manage Addresses
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AddressBook title="Your Addresses" />
+            </CardContent>
+          </Card>
 
           {/* Quick Links */}
           <Card>

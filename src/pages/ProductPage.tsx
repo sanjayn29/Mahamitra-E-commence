@@ -1,18 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Star, Heart, Share2, Truck, RefreshCw, Shield, ChevronLeft, Loader2, ShoppingBag, ShoppingCart } from 'lucide-react';
+import { Share2, Truck, RefreshCw, Shield, ChevronLeft, Loader2, ShoppingBag, ShoppingCart } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
 import ProductCard from '@/components/ProductCard';
 import { Button } from '@/components/ui/button';
-import { RatingDisplay, Rating } from '@/components/Rating';
 import { FavoriteButton } from '@/components/FavoriteButton';
-import { Comments } from '@/components/Comments';
+import ProductReviews from '@/components/ProductReviews';
 import { useProduct } from '@/hooks/useProducts';
 import { fetchProductsByCategory, EnhancedProduct } from '@/services/productService';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
+import { variantService, ProductVariant } from '@/services/variantService';
+import { DEFAULT_VARIANT_COLOR, DEFAULT_VARIANT_SIZE } from '@/lib/productVariants';
 import { toast } from 'sonner';
 import SEO from '@/components/SEO';
+
+const normalizeOption = (value: string) => value.trim().toLowerCase();
 
 const ProductPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -27,6 +30,9 @@ const ProductPage = () => {
   const [relatedProducts, setRelatedProducts] = useState<EnhancedProduct[]>([]);
   const [relatedLoading, setRelatedLoading] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
+  const [variants, setVariants] = useState<ProductVariant[]>([]);
+  const [variantLoading, setVariantLoading] = useState(false);
+  const [selectedQuantity, setSelectedQuantity] = useState(1);
 
   // Fetch related products when product loads
   useEffect(() => {
@@ -48,6 +54,162 @@ const ProductPage = () => {
     fetchRelated();
   }, [product]);
 
+  useEffect(() => {
+    if (!product) {
+      return;
+    }
+
+    let isMounted = true;
+
+    const fetchVariants = async (showLoader = false) => {
+      try {
+        if (showLoader) {
+          setVariantLoading(true);
+        }
+
+        const data = await variantService.getVariants(product.id, product.category);
+        if (isMounted) {
+          setVariants(data);
+        }
+      } catch (variantError) {
+        console.error('Error fetching product variants:', variantError);
+        if (isMounted) {
+          setVariants([]);
+        }
+      } finally {
+        if (showLoader && isMounted) {
+          setVariantLoading(false);
+        }
+      }
+    };
+
+    const handleWindowFocus = () => {
+      fetchVariants(false);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchVariants(false);
+      }
+    };
+
+    fetchVariants(true);
+    const intervalId = window.setInterval(() => fetchVariants(false), 10000);
+    window.addEventListener('focus', handleWindowFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', handleWindowFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [product?.id, product?.category]);
+
+  const hasVariantInventory = variants.length > 0;
+  const variantColors = Array.from(new Set(variants.map((variant) => variant.color)));
+  const availableColors = hasVariantInventory ? variantColors : (product?.colors || []);
+
+  const sizeRequired = product?.size_required !== false;
+  const hasRealSizes = (product?.sizes || []).length > 0 &&
+    !((product?.sizes || []).length === 1 && (product?.sizes || [])[0] === DEFAULT_VARIANT_SIZE);
+  const showSizeSelector = sizeRequired && hasRealSizes;
+  const sizeOptions = hasVariantInventory
+    ? Array.from(new Set(variants.map((variant) => variant.size)))
+    : (product?.sizes || []);
+
+  useEffect(() => {
+    if (!product) {
+      return;
+    }
+
+    if (!hasVariantInventory) {
+      if (!selectedColor) {
+        setSelectedColor(product.colors[0] || '');
+      }
+      if (!selectedSize && showSizeSelector) {
+        setSelectedSize(product.sizes[0] || '');
+      }
+      return;
+    }
+
+    const firstInStockVariant = variants.find((variant) => variant.stock_quantity > 0) || variants[0];
+    const selectedColorKey = normalizeOption(selectedColor);
+    const nextColor = variants.some((variant) => normalizeOption(variant.color) === selectedColorKey)
+      ? selectedColor
+      : firstInStockVariant?.color || '';
+    const nextColorKey = normalizeOption(nextColor);
+    const selectedSizeKey = normalizeOption(selectedSize);
+    const sizesForColor = variants.filter((variant) => normalizeOption(variant.color) === nextColorKey);
+    const nextSize = showSizeSelector
+      ? (sizesForColor.find((variant) => variant.stock_quantity > 0 && normalizeOption(variant.size) === selectedSizeKey)?.size
+        || sizesForColor.find((variant) => variant.stock_quantity > 0)?.size
+        || sizesForColor[0]?.size
+        || '')
+      : (sizesForColor[0]?.size || DEFAULT_VARIANT_SIZE);
+
+    if (nextColor !== selectedColor) {
+      setSelectedColor(nextColor);
+    }
+    if (nextSize !== selectedSize) {
+      setSelectedSize(nextSize);
+    }
+  }, [product, variants, hasVariantInventory, selectedColor, selectedSize, showSizeSelector]);
+
+  const colorVariantOptions = hasVariantInventory
+    ? availableColors.map((color) => ({
+        color,
+        hasStock: variants.some((variant) => normalizeOption(variant.color) === normalizeOption(color) && variant.stock_quantity > 0),
+      }))
+    : availableColors.map((color) => ({ color, hasStock: !!product?.inStock }));
+
+  const sizeAvailability = sizeOptions.map((size) => ({
+    size,
+    hasStock: hasVariantInventory
+      ? variants.some((variant) =>
+          normalizeOption(variant.color) === normalizeOption(selectedColor)
+          && normalizeOption(variant.size) === normalizeOption(size)
+          && variant.stock_quantity > 0
+        )
+      : !!product?.inStock,
+  }));
+
+  const selectedVariant = hasVariantInventory
+    ? variants.find((variant) =>
+        normalizeOption(variant.color) === normalizeOption(selectedColor)
+        && normalizeOption(variant.size) === normalizeOption(showSizeSelector ? selectedSize : (selectedSize || DEFAULT_VARIANT_SIZE))
+      )
+      || null
+    : null;
+  const baseImages = product?.images || [];
+  const leadImage = selectedVariant?.image_url || baseImages[0] || '';
+  const galleryImages = leadImage
+    ? [leadImage, ...baseImages.filter((image) => image !== leadImage)]
+    : baseImages;
+  const activeImage = galleryImages[selectedImage] || galleryImages[0] || '';
+  const activePrice = selectedVariant?.price_override ?? product?.price ?? 0;
+  const availableStock = selectedVariant?.stock_quantity ?? 0;
+  const effectiveStock = hasVariantInventory ? availableStock > 0 : product?.inStock;
+
+  useEffect(() => {
+    setSelectedImage(0);
+  }, [selectedVariant?.id]);
+
+  useEffect(() => {
+    if (!hasVariantInventory) {
+      setSelectedQuantity(1);
+      return;
+    }
+
+    setSelectedQuantity((currentQuantity) => {
+      if (availableStock <= 0) {
+        return 1;
+      }
+
+      return Math.min(currentQuantity, availableStock);
+    });
+  }, [hasVariantInventory, availableStock]);
+
   const handleAddToCart = async () => {
     if (!user) {
       toast.error('Please login to add items to cart');
@@ -55,13 +217,14 @@ const ProductPage = () => {
       return;
     }
 
-    if (!product || !product.inStock) return;
+    if (!product || !effectiveStock) return;
+
+    if (hasVariantInventory && !selectedVariant) {
+      toast.error('Please select an available variant before adding to cart');
+      return;
+    }
 
     // Require size if size_required is true and product has multiple sizes
-    const sizeRequired = product.size_required !== false;
-    const hasRealSizes = product.sizes && product.sizes.length > 0 &&
-      !(product.sizes.length === 1 && product.sizes[0] === 'Free Size');
-
     if (sizeRequired && hasRealSizes && !selectedSize) {
       toast.error('Please select a size before adding to cart');
       return;
@@ -73,17 +236,18 @@ const ProductPage = () => {
         {
           id: product.id,
           name: product.name,
-          price: product.price,
+          price: activePrice,
           originalPrice: product.cost,
           category: product.category,
-          image: product.image,
-          images: product.images,
+          image: activeImage,
+          images: activeImage ? [activeImage, ...product.images.filter((image) => image !== activeImage)] : product.images,
           description: product.description,
-          inStock: product.inStock,
+          inStock: !!effectiveStock,
         } as any,
-        1,
-        selectedSize || undefined,
-        selectedColor || undefined
+        selectedQuantity,
+        selectedVariant?.size || selectedSize || undefined,
+        selectedVariant?.color || selectedColor || undefined,
+        selectedVariant?.id
       );
       setCartOpen(true);
     } catch (error) {
@@ -145,15 +309,9 @@ const ProductPage = () => {
     );
   }
 
-  const discount = product.cost && product.cost !== product.price
-    ? Math.round(((product.cost - product.price) / product.cost) * 100)
+  const discount = product.cost && product.cost !== activePrice
+    ? Math.round(((product.cost - activePrice) / product.cost) * 100)
     : 0;
-
-  // Determine if size selector should be shown
-  const sizeRequired = product.size_required !== false;
-  const hasRealSizes = product.sizes && product.sizes.length > 0 &&
-    !(product.sizes.length === 1 && product.sizes[0] === 'Free Size');
-  const showSizeSelector = sizeRequired && hasRealSizes;
 
   return (
     <MainLayout>
@@ -193,14 +351,14 @@ const ProductPage = () => {
           <div className="space-y-4">
             <div className="aspect-[3/4] rounded-2xl overflow-hidden bg-muted">
               <img
-                src={product.images[selectedImage]}
+                src={activeImage}
                 alt={product.name}
                 className="w-full h-full object-cover"
               />
             </div>
-            {product.images.length > 1 && (
+            {galleryImages.length > 1 && (
               <div className="flex gap-4">
-                {product.images.map((image, index) => (
+                {galleryImages.map((image, index) => (
                   <button
                     key={index}
                     onClick={() => setSelectedImage(index)}
@@ -222,7 +380,7 @@ const ProductPage = () => {
           <div className="space-y-6">
             {/* Stock Status */}
             <div className="flex items-center gap-2">
-              {product.inStock ? (
+              {effectiveStock ? (
                 <span className="bg-green-100 text-green-700 text-xs font-sans font-semibold px-3 py-1 rounded-full">
                   IN STOCK
                 </span>
@@ -241,20 +399,10 @@ const ProductPage = () => {
               <h1 className="font-serif text-3xl md:text-4xl font-semibold">{product.name}</h1>
             </div>
 
-            {/* Rating */}
-            <div className="flex items-center gap-3">
-              <RatingDisplay
-                productId={product.id}
-                productType={product.category}
-                size="md"
-                showCount={true}
-              />
-            </div>
-
             {/* Price */}
             <div className="flex items-center gap-4">
               <span className="font-sans text-3xl font-semibold">
-                ₹{product.price.toLocaleString()}
+                ₹{activePrice.toLocaleString()}
               </span>
               {discount > 0 && (
                 <>
@@ -288,14 +436,16 @@ const ProductPage = () => {
                   Select Size <span className="text-destructive">*</span>
                 </h3>
                 <div className="flex flex-wrap gap-3">
-                  {product.sizes.map((size) => (
+                  {sizeAvailability.map(({ size, hasStock }) => (
                     <button
                       key={size}
+                      type="button"
                       onClick={() => setSelectedSize(size)}
                       className={`min-w-[60px] h-10 px-4 rounded-lg border-2 font-sans text-sm transition-all ${selectedSize === size
                           ? 'border-primary bg-primary text-primary-foreground'
                           : 'border-border hover:border-primary'
                         }`}
+                      disabled={hasVariantInventory && !hasStock}
                     >
                       {size}
                     </button>
@@ -305,21 +455,26 @@ const ProductPage = () => {
             )}
 
             {/* Color Selection */}
-            {product.colors && product.colors.length > 0 &&
-              !(product.colors.length === 1 && product.colors[0] === 'Default') && (
+            {availableColors && availableColors.length > 0 &&
+              !(availableColors.length === 1 && availableColors[0] === 'Default') && (
                 <div>
                   <h3 className="font-serif text-lg font-medium mb-3">
                     Select Color
                   </h3>
+                  {variantLoading && (
+                    <p className="text-xs text-muted-foreground mb-2">Loading color variants...</p>
+                  )}
                   <div className="flex flex-wrap gap-3">
-                    {product.colors.map((color) => (
+                    {colorVariantOptions.map(({ color, hasStock }) => (
                       <button
                         key={color}
+                        type="button"
                         onClick={() => setSelectedColor(color)}
                         className={`px-4 py-2 rounded-lg border-2 font-sans text-sm transition-all ${selectedColor === color
                             ? 'border-primary bg-primary/10'
                             : 'border-border hover:border-primary'
                           }`}
+                        disabled={hasVariantInventory && !hasStock}
                       >
                         {color}
                       </button>
@@ -327,6 +482,34 @@ const ProductPage = () => {
                   </div>
                 </div>
               )}
+
+            <div>
+              <h3 className="font-serif text-lg font-medium mb-3">Quantity</h3>
+              <div className="flex items-center gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedQuantity((quantity) => Math.max(1, quantity - 1))}
+                  disabled={selectedQuantity <= 1}
+                >
+                  -
+                </Button>
+                <span className="text-lg font-semibold w-12 text-center">{selectedQuantity}</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedQuantity((quantity) => quantity + 1)}
+                  disabled={hasVariantInventory && (!!selectedVariant ? selectedQuantity >= selectedVariant.stock_quantity : true)}
+                >
+                  +
+                </Button>
+                {hasVariantInventory && selectedVariant && (
+                  <p className="text-sm text-muted-foreground">{selectedVariant.stock_quantity} available</p>
+                )}
+              </div>
+            </div>
 
             {/* Action Buttons */}
             <div className="flex gap-3 flex-wrap">
@@ -336,7 +519,7 @@ const ProductPage = () => {
                 variant="outline"
                 className="flex-1 min-w-[140px]"
                 onClick={handleAddToCart}
-                disabled={!product.inStock || addingToCart}
+                disabled={!effectiveStock || addingToCart}
               >
                 {addingToCart ? (
                   <><Loader2 size={18} className="mr-2 animate-spin" /> Adding...</>
@@ -351,11 +534,13 @@ const ProductPage = () => {
                 className="flex-1 min-w-[140px]"
                 onClick={() => {
                   const params = new URLSearchParams();
-                  if (selectedSize) params.append('size', selectedSize);
-                  if (selectedColor) params.append('color', selectedColor);
+                  if (selectedVariant?.size || selectedSize) params.append('size', selectedVariant?.size || selectedSize);
+                  if (selectedVariant?.color || selectedColor) params.append('color', selectedVariant?.color || selectedColor);
+                  if (selectedVariant?.id) params.append('variantId', selectedVariant.id);
+                  params.append('quantity', String(selectedQuantity));
                   navigate(`/buy-now/${product.id}?${params.toString()}`);
                 }}
-                disabled={!product.inStock}
+                disabled={!effectiveStock || (hasVariantInventory && !selectedVariant)}
               >
                 <ShoppingBag size={18} className="mr-2" />
                 Buy Now
@@ -404,23 +589,9 @@ const ProductPage = () => {
           </div>
         </div>
 
-        {/* Reviews and Comments */}
-        <div className="mt-16 space-y-12">
-          <div className="bg-muted/30 rounded-lg p-8">
-            <h3 className="font-serif text-2xl font-semibold mb-6">Rate this Product</h3>
-            <Rating
-              productId={product.id}
-              productType={product.category}
-              showUserRating={true}
-            />
-          </div>
-
-          <div>
-            <Comments
-              productId={product.id}
-              productType={product.category}
-            />
-          </div>
+        {/* Reviews */}
+        <div className="mt-16">
+          <ProductReviews productId={product.id} productType={product.category} />
         </div>
 
         {/* Related Products */}

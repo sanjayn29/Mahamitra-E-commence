@@ -25,11 +25,38 @@ export interface CartItem {
   user_id: string;
   product_id: string;
   product_type: 'girls' | 'women' | 'babies';
+  variant_id?: string | null;
   quantity: number;
   size?: string;
   color?: string;
   added_at: string;
 }
+
+const resolveVariantInventory = async (variantId?: string, size?: string, color?: string) => {
+  if (!variantId) {
+    return {
+      normalizedSize: size || '',
+      normalizedColor: color || '',
+      maxQuantity: null as number | null,
+    };
+  }
+
+  const { data: variant, error } = await supabase
+    .from('product_variants')
+    .select('id, color, size, stock_quantity')
+    .eq('id', variantId)
+    .single();
+
+  if (error || !variant) {
+    throw error || new Error('Selected variant could not be found');
+  }
+
+  return {
+    normalizedSize: variant.size || size || '',
+    normalizedColor: variant.color || color || '',
+    maxQuantity: variant.stock_quantity ?? 0,
+  };
+};
 
 export interface Favorite {
   id: string;
@@ -175,14 +202,17 @@ export const cartService = {
     productType: string,
     quantity: number = 1,
     size?: string,
-    color?: string
+    color?: string,
+    variantId?: string
   ): Promise<CartItem> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    // Normalize size and color to empty string if not provided
-    const normalizedSize = size || '';
-    const normalizedColor = color || '';
+    const { normalizedSize, normalizedColor, maxQuantity } = await resolveVariantInventory(variantId, size, color);
+
+    if (maxQuantity !== null && quantity > maxQuantity) {
+      throw new Error(`Only ${maxQuantity} item(s) available for this variant`);
+    }
 
     // Check for existing item with same product (current DB constraint: user_id, product_id, product_type only)
     const { data: existingItems, error: selectError } = await supabase
@@ -190,7 +220,8 @@ export const cartService = {
       .select('*')
       .eq('user_id', user.id)
       .eq('product_id', productId)
-      .eq('product_type', productType);
+      .eq('product_type', productType)
+      .eq('variant_id', variantId || null);
 
     if (selectError) {
       console.error('Error checking for existing cart item:', selectError);
@@ -199,12 +230,20 @@ export const cartService = {
 
     // Find exact match including size and color
     const exactMatch = existingItems?.find(
-      item => (item.size || '') === normalizedSize && (item.color || '') === normalizedColor
+      item =>
+        (item.size || '') === normalizedSize &&
+        (item.color || '') === normalizedColor &&
+        (item.variant_id || null) === (variantId || null)
     );
 
     if (exactMatch) {
       // Update existing item's quantity
       const newQuantity = exactMatch.quantity + quantity;
+
+      if (maxQuantity !== null && newQuantity > maxQuantity) {
+        throw new Error(`Only ${maxQuantity} item(s) available for this variant`);
+      }
+
       const { data, error: updateError } = await supabase
         .from('cart_items')
         .update({ quantity: newQuantity })
@@ -219,14 +258,6 @@ export const cartService = {
       return data;
     }
 
-    // If there are existing items but no exact match, delete them first
-    // (due to DB constraint limitation - can't have same product with different size/color)
-    if (existingItems && existingItems.length > 0) {
-      for (const item of existingItems) {
-        await supabase.from('cart_items').delete().eq('id', item.id);
-      }
-    }
-
     // Insert new item
     const { data, error: insertError } = await supabase
       .from('cart_items')
@@ -234,6 +265,7 @@ export const cartService = {
         user_id: user.id,
         product_id: productId,
         product_type: productType,
+        variant_id: variantId || null,
         quantity,
         size: normalizedSize,
         color: normalizedColor,
@@ -256,6 +288,24 @@ export const cartService = {
       // This part of the logic might need refinement based on UI needs.
       // Returning an empty object to satisfy the type, assuming the caller will refetch cart.
       return {} as CartItem;
+    }
+
+    const { data: cartItem, error: cartItemError } = await supabase
+      .from('cart_items')
+      .select('variant_id')
+      .eq('id', cartItemId)
+      .single();
+
+    if (cartItemError) {
+      console.error('Cart item lookup error:', cartItemError);
+      throw cartItemError;
+    }
+
+    if (cartItem?.variant_id) {
+      const { maxQuantity } = await resolveVariantInventory(cartItem.variant_id);
+      if (maxQuantity !== null && quantity > maxQuantity) {
+        throw new Error(`Only ${maxQuantity} item(s) available for this variant`);
+      }
     }
 
     const { data, error } = await supabase

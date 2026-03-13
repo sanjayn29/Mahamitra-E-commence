@@ -52,8 +52,22 @@ import {
   MoreVertical,
   Plus,
   Eye,
-  Loader2
+  Loader2,
+  Upload,
+  X,
+  ImageIcon
 } from 'lucide-react';
+import {
+  buildVariantDrafts,
+  buildVariantDraftsFromRows,
+  buildVariantRows,
+  formatVariantOptionLabel,
+  normalizeVariantColors,
+  normalizeVariantSizes,
+  parseOptionList,
+  validateVariantDrafts,
+  VariantInventoryDraft,
+} from '@/lib/productVariants';
 import { toast } from 'sonner';
 
 type CategoryType = 'all' | 'women' | 'girls' | 'babies';
@@ -88,6 +102,66 @@ const InventoryManagement = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<SupabaseProduct | null>(null);
   const [editFormData, setEditFormData] = useState<Partial<SupabaseProduct>>({});
+  const [editVariantDrafts, setEditVariantDrafts] = useState<VariantInventoryDraft[]>([]);
+  const [variantLoading, setVariantLoading] = useState(false);
+
+  const activeEditColors = normalizeVariantColors(editFormData.colors || []);
+  const activeEditSizes = normalizeVariantSizes(editFormData.sizes || []);
+
+  useEffect(() => {
+    if (!editDialogOpen) {
+      return;
+    }
+
+    setEditVariantDrafts((previousDrafts) =>
+      buildVariantDrafts(activeEditColors, activeEditSizes, previousDrafts, productToEdit?.image || '')
+    );
+  }, [activeEditColors, activeEditSizes, editDialogOpen, productToEdit?.image]);
+
+  const updateVariantDraft = (color: string, field: 'image_url' | 'price_override', value: string) => {
+    setEditVariantDrafts((previousDrafts) =>
+      previousDrafts.map((draft) =>
+        draft.color.toLowerCase() === color.toLowerCase()
+          ? {
+              ...draft,
+              [field]: value,
+            }
+          : draft
+      )
+    );
+  };
+
+  const updateVariantStock = (color: string, size: string, value: string) => {
+    setEditVariantDrafts((previousDrafts) =>
+      previousDrafts.map((draft) =>
+        draft.color.toLowerCase() === color.toLowerCase()
+          ? {
+              ...draft,
+              sizeStocks: {
+                ...draft.sizeStocks,
+                [size]: value,
+              },
+            }
+          : draft
+      )
+    );
+  };
+
+  const getVariantInputId = (prefix: string, color: string) => `${prefix}-${color.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+
+  const handleEditVariantImageChange = (color: string, file?: File) => {
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      updateVariantDraft(color, 'image_url', String(reader.result || ''));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const clearEditVariantImage = (color: string) => {
+    updateVariantDraft(color, 'image_url', '');
+  };
 
   // Fetch products from Supabase
   const fetchProducts = async () => {
@@ -164,6 +238,26 @@ const InventoryManagement = () => {
         throw error;
       }
 
+      const { error: deleteVariantsError } = await supabase
+        .from('product_variants')
+        .delete()
+        .eq('product_public_id', productId)
+        .eq('product_category', category);
+
+      if (deleteVariantsError) {
+        throw deleteVariantsError;
+      }
+
+      const { error: deleteCatalogError } = await supabase
+        .from('products')
+        .delete()
+        .eq('product_public_id', productId)
+        .eq('category', category);
+
+      if (deleteCatalogError) {
+        throw deleteCatalogError;
+      }
+
       // Remove from local state
       setProducts(prev => prev.filter(p => p.productId !== productId));
 
@@ -192,7 +286,7 @@ const InventoryManagement = () => {
     setViewDialogOpen(true);
   };
 
-  const openEditDialog = (product: SupabaseProduct) => {
+  const openEditDialog = async (product: SupabaseProduct) => {
     setProductToEdit(product);
     setEditFormData({
       name: product.name,
@@ -205,10 +299,53 @@ const InventoryManagement = () => {
       size_required: product.size_required !== false,
     });
     setEditDialogOpen(true);
+
+    try {
+      setVariantLoading(true);
+      const { data: existingVariants, error: variantsError } = await supabase
+        .from('product_variants')
+        .select('color, size, image_url, stock_quantity, price_override')
+        .eq('product_public_id', product.productId)
+        .eq('product_category', product.category);
+
+      if (variantsError) {
+        throw variantsError;
+      }
+
+      setEditVariantDrafts(
+        buildVariantDraftsFromRows(
+          (existingVariants || []).map((variant: any) => ({
+            color: String(variant.color),
+            size: String(variant.size || 'Free Size'),
+            image_url: variant.image_url || '',
+            stock_quantity: Number(variant.stock_quantity ?? 0),
+            price_override: variant.price_override == null ? null : Number(variant.price_override),
+          })),
+          normalizeVariantColors(product.colors || []),
+          normalizeVariantSizes(product.sizes || []),
+          product.image || ''
+        )
+      );
+    } catch (error) {
+      console.error('Error loading variant details:', error);
+      setEditVariantDrafts(buildVariantDrafts(activeEditColors, activeEditSizes, [], product.image || ''));
+      toast.error('Could not load existing variant details');
+    } finally {
+      setVariantLoading(false);
+    }
   };
 
   const handleSaveEdit = async () => {
     if (!productToEdit) return;
+
+    const validationMessage = validateVariantDrafts(editVariantDrafts, activeEditColors, activeEditSizes);
+
+    if (validationMessage) {
+      toast.error('Variant details missing', {
+        description: validationMessage
+      });
+      return;
+    }
 
     setLoading(true);
     try {
@@ -220,14 +357,63 @@ const InventoryManagement = () => {
           cost: editFormData.cost,
           description: editFormData.description,
           status: editFormData.status,
-          sizes: editFormData.sizes,
-          colors: editFormData.colors,
+          sizes: editFormData.sizes || [],
+          colors: editFormData.colors || [],
           size_required: editFormData.size_required,
         })
         .eq('productId', productToEdit.productId);
 
       if (error) {
         throw error;
+      }
+
+      const { error: catalogError } = await supabase
+        .from('products')
+        .upsert(
+          {
+            product_public_id: productToEdit.productId,
+            category: productToEdit.category,
+          },
+          { onConflict: 'product_public_id' }
+        );
+
+      if (catalogError) {
+        throw catalogError;
+      }
+
+      const { data: catalogProduct, error: catalogFetchError } = await supabase
+        .from('products')
+        .select('id')
+        .eq('product_public_id', productToEdit.productId)
+        .eq('category', productToEdit.category)
+        .single();
+
+      if (catalogFetchError || !catalogProduct) {
+        throw catalogFetchError || new Error('Failed to resolve product catalog record');
+      }
+
+      const { error: deleteVariantsError } = await supabase
+        .from('product_variants')
+        .delete()
+        .eq('product_public_id', productToEdit.productId)
+        .eq('product_category', productToEdit.category);
+
+      if (deleteVariantsError) {
+        throw deleteVariantsError;
+      }
+
+      const variantRows = buildVariantRows(editVariantDrafts, activeEditColors, activeEditSizes, {
+        product_id: catalogProduct.id,
+        product_public_id: productToEdit.productId,
+        product_category: productToEdit.category,
+      });
+
+      const { error: insertVariantsError } = await supabase
+        .from('product_variants')
+        .insert(variantRows);
+
+      if (insertVariantsError) {
+        throw insertVariantsError;
       }
 
       // Update local state
@@ -241,6 +427,7 @@ const InventoryManagement = () => {
       setEditDialogOpen(false);
       setProductToEdit(null);
       setEditFormData({});
+      setEditVariantDrafts([]);
     } catch (error: any) {
       console.error('Error updating product:', error);
       toast.error('Failed to update product', {
@@ -521,7 +708,7 @@ const InventoryManagement = () => {
 
         {/* View Product Dialog */}
         <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Product Details</DialogTitle>
               <DialogDescription>
@@ -586,7 +773,7 @@ const InventoryManagement = () => {
 
         {/* Edit Product Dialog */}
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
             <DialogHeader>
               <DialogTitle>Edit Product</DialogTitle>
               <DialogDescription>
@@ -594,7 +781,7 @@ const InventoryManagement = () => {
               </DialogDescription>
             </DialogHeader>
             {productToEdit && (
-              <div className="space-y-4">
+              <div className="space-y-4 overflow-y-auto pr-2 max-h-[calc(90vh-10rem)]">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="edit-name">Product Name</Label>
@@ -639,10 +826,13 @@ const InventoryManagement = () => {
                     <Input
                       id="edit-colors"
                       value={editFormData.colors?.join(', ') || ''}
-                      onChange={(e) => setEditFormData(prev => ({
-                        ...prev,
-                        colors: e.target.value.split(',').map(c => c.trim()).filter(c => c)
-                      }))}
+                      onChange={(e) => {
+                        const nextColors = parseOptionList(e.target.value);
+                        setEditFormData(prev => ({
+                          ...prev,
+                          colors: nextColors
+                        }));
+                      }}
                       placeholder="Red, Blue, Green"
                     />
                   </div>
@@ -675,6 +865,103 @@ const InventoryManagement = () => {
                       }
                     />
                   </div>
+                </div>
+                <div className="space-y-3 rounded-lg border border-border p-3">
+                  <div>
+                    <Label className="text-sm font-medium">Variant Inventory</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Configure image per color and stock for each color/size combination.
+                    </p>
+                  </div>
+
+                  {variantLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 size={14} className="animate-spin" />
+                      Loading variant data...
+                    </div>
+                  ) : editVariantDrafts.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Add colors or sizes to configure inventory combinations.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {editVariantDrafts.map((variant) => (
+                        <div key={variant.color} className="rounded-md border border-border p-3 space-y-2">
+                          <p className="text-sm font-semibold">{formatVariantOptionLabel(variant.color, 'Default color')}</p>
+                          <div className="space-y-2">
+                            <Label>Variant Image *</Label>
+                            {!variant.image_url ? (
+                              <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
+                                <ImageIcon size={24} className="mx-auto text-muted-foreground mb-2" />
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => handleEditVariantImageChange(variant.color, e.target.files?.[0])}
+                                  className="hidden"
+                                  id={getVariantInputId('inventory-variant-image-upload', variant.color)}
+                                />
+                                <Label htmlFor={getVariantInputId('inventory-variant-image-upload', variant.color)}>
+                                  <Button type="button" variant="outline" className="cursor-pointer" asChild>
+                                    <span>
+                                      <Upload size={14} className="mr-2" />
+                                      Upload Image
+                                    </span>
+                                  </Button>
+                                </Label>
+                              </div>
+                            ) : (
+                              <div className="relative">
+                                <img
+                                  src={variant.image_url}
+                                  alt={`${variant.color} variant`}
+                                  className="w-full h-32 object-cover rounded-md border"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="destructive"
+                                  size="icon"
+                                  className="absolute top-2 right-2 h-7 w-7"
+                                  onClick={() => clearEditVariantImage(variant.color)}
+                                >
+                                  <X size={14} />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                              <Label htmlFor={`inventory-variant-price-${variant.color}`}>Price Override</Label>
+                              <Input
+                                id={`inventory-variant-price-${variant.color}`}
+                                type="number"
+                                min="0"
+                                value={variant.price_override}
+                                onChange={(e) => updateVariantDraft(variant.color, 'price_override', e.target.value)}
+                                placeholder="Optional"
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Stock by Size *</Label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {activeEditSizes.map((size) => (
+                                <div key={`${variant.color}-${size}`} className="space-y-2">
+                                  <Label htmlFor={`inventory-variant-stock-${variant.color}-${size}`}>
+                                    {formatVariantOptionLabel(size, 'Free Size')}
+                                  </Label>
+                                  <Input
+                                    id={`inventory-variant-stock-${variant.color}-${size}`}
+                                    type="number"
+                                    min="0"
+                                    value={variant.sizeStocks[size] || '0'}
+                                    onChange={(e) => updateVariantStock(variant.color, size, e.target.value)}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-description">Description</Label>

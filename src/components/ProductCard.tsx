@@ -37,13 +37,15 @@ const ProductCard = ({ product }: ProductCardProps) => {
       return;
     }
 
-    // If size is required and there are multiple size options, go to product page
+    // Variant-aware products should be configured on the product page.
     const hasMultipleSizes = product.sizes && product.sizes.length > 1 &&
       !(product.sizes.length === 1 && product.sizes[0] === 'Free Size');
+    const hasMultipleColors = product.colors && product.colors.length > 1 &&
+      !(product.colors.length === 1 && product.colors[0] === 'Default');
     const sizeRequired = product.size_required !== false;
 
-    if (sizeRequired && hasMultipleSizes) {
-      toast.info('Please select a size first', { description: 'Click the product to choose your size.' });
+    if ((sizeRequired && hasMultipleSizes) || hasMultipleColors) {
+      toast.info('Please choose the variant first', { description: 'Open the product page to select size and color.' });
       navigate(`/product/${product.id}`);
       return;
     }

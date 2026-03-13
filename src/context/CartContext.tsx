@@ -7,6 +7,9 @@ import { toast } from 'sonner';
 export interface CartItem {
   id?: string;
   product: Product;
+  variantId?: string;
+  variantImage?: string;
+  variantPrice?: number;
   quantity: number;
   size: string;
   color: string;
@@ -30,8 +33,8 @@ type CartAction =
 
 interface CartContextType {
   state: CartState;
-  addItem: (product: Product, quantity: number, size?: string, color?: string) => Promise<void>;
-  addToCart: (productId: string, productType: string, quantity?: number, size?: string, color?: string) => Promise<void>;
+  addItem: (product: Product, quantity: number, size?: string, color?: string, variantId?: string) => Promise<void>;
+  addToCart: (productId: string, productType: string, quantity?: number, size?: string, color?: string, variantId?: string) => Promise<void>;
   removeItem: (cartItemId: string) => Promise<void>;
   updateQuantity: (cartItemId: string, quantity: number) => Promise<void>;
   clearCart: () => Promise<void>;
@@ -50,6 +53,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
     case 'ADD_ITEM': {
       const existingIndex = state.items.findIndex(
         item =>
+          (item.variantId || null) === (action.payload.variantId || null) &&
           item.product.id === action.payload.product.id &&
           item.size === action.payload.size &&
           item.color === action.payload.color
@@ -136,26 +140,33 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         cartItems.map(async (item: DatabaseCartItem) => {
           try {
             const { getProduct } = await import('@/services/productService');
+            const { variantService } = await import('@/services/variantService');
             const productDetails = await getProduct(item.product_id, item.product_type as any);
+            const variant = item.variant_id ? await variantService.getVariantById(item.variant_id) : null;
 
             if (productDetails) {
+              const variantPrice = variant?.price_override ?? null;
+              const variantImage = variant?.image_url ?? null;
               return {
                 id: item.id,
                 product: {
                   id: productDetails.productId,
                   name: productDetails.name,
-                  price: productDetails.price,
+                  price: variantPrice ?? productDetails.price,
                   category: productDetails.category,
-                  image: productDetails.image,
-                  images: productDetails.images,
+                  image: variantImage ?? productDetails.image,
+                  images: variantImage ? [variantImage, ...productDetails.images.filter((image) => image !== variantImage)] : productDetails.images,
                   description: productDetails.description,
-                  inStock: productDetails.inStock,
+                  inStock: variant ? variant.stock_quantity > 0 : productDetails.inStock,
                   rating: productDetails.rating,
                   reviews: productDetails.reviews,
                 } as Product,
+                variantId: item.variant_id || undefined,
+                variantImage: variantImage || undefined,
+                variantPrice: variantPrice ?? undefined,
                 quantity: item.quantity,
-                size: item.size || '',
-                color: item.color || '',
+                size: variant?.size || item.size || '',
+                color: variant?.color || item.color || '',
               };
             } else {
               return {
@@ -166,6 +177,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
                   price: 0,
                   category: item.product_type,
                 } as Product,
+                variantId: item.variant_id || undefined,
                 quantity: item.quantity,
                 size: item.size || '',
                 color: item.color || '',
@@ -181,6 +193,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
                 price: 0,
                 category: item.product_type,
               } as Product,
+              variantId: item.variant_id || undefined,
               quantity: item.quantity,
               size: item.size || '',
               color: item.color || '',
@@ -209,14 +222,14 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user, authLoading]);
 
-  const addItem = async (product: Product, quantity: number, size?: string, color?: string) => {
+  const addItem = async (product: Product, quantity: number, size?: string, color?: string, variantId?: string) => {
     if (!user) {
       toast.error('Please login to add items to cart');
       return;
     }
 
     try {
-      await cartService.addToCart(product.id, product.category, quantity, size, color);
+      await cartService.addToCart(product.id, product.category, quantity, size, color, variantId);
       await loadCartItems(); // Reload to get the actual database state
       toast.success(`${product.name} added to cart!`);
     } catch (error) {
@@ -249,7 +262,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       dispatch({ type: 'UPDATE_QUANTITY', payload: { cartItemId, quantity } });
     } catch (error) {
       console.error('Error updating quantity:', error);
-      toast.error('Failed to update item quantity');
+      toast.error(error instanceof Error ? error.message : 'Failed to update item quantity');
     }
   };
 
@@ -294,7 +307,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     productType: string,
     quantity: number = 1,
     size?: string,
-    color?: string
+    color?: string,
+    variantId?: string
   ) => {
     if (!user) {
       toast.error('Please login to add items to cart');
@@ -302,7 +316,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
-      await cartService.addToCart(productId, productType, quantity, size, color);
+      await cartService.addToCart(productId, productType, quantity, size, color, variantId);
       await loadCartItems(); // Refresh cart from database
       toast.success('Item added to cart!');
     } catch (error) {

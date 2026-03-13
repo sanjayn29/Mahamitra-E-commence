@@ -17,6 +17,13 @@ const SignupPage = () => {
     gender: '',
     email: '',
     password: '',
+    phone: '',
+    addressLine1: '',
+    addressLine2: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    country: 'India',
   });
 
   const handleInputChange = (field: string, value: string) => {
@@ -30,9 +37,21 @@ const SignupPage = () => {
     e.preventDefault();
     setLoading(true);
 
-    const { name, gender, email, password } = formData;
+    const {
+      name,
+      gender,
+      email,
+      password,
+      phone,
+      addressLine1,
+      addressLine2,
+      city,
+      state,
+      postalCode,
+      country,
+    } = formData;
 
-    if (!name || !gender || !email || !password) {
+    if (!name || !gender || !email || !password || !phone || !addressLine1 || !city || !state || !postalCode || !country) {
       toast.error('All fields are required');
       setLoading(false);
       return;
@@ -66,10 +85,28 @@ const SignupPage = () => {
           name,
           gender,
           email,
+          phone,
         });
 
         if (insertError) {
           throw insertError;
+        }
+
+        const { error: addressError } = await supabase.from('addresses').insert({
+          user_id: user.id,
+          full_name: name,
+          phone,
+          address_line_1: addressLine1,
+          address_line_2: addressLine2 || null,
+          city,
+          state,
+          postal_code: postalCode,
+          country,
+          is_default: true,
+        });
+
+        if (addressError) {
+          throw addressError;
         }
 
         // Automatically sign in the user after signup
@@ -102,7 +139,7 @@ const SignupPage = () => {
         title="Sign Up | Mahamitra Boutique"
         description="Create a Mahamitra Boutique account today. Join our community for exclusive offers and a seamless shopping experience."
       />
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-xl">
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-center">Create an Account</CardTitle>
         </CardHeader>
@@ -150,6 +187,76 @@ const SignupPage = () => {
                 onChange={e => handleInputChange('password', e.target.value)}
                 required
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="10-digit mobile number"
+                onChange={e => handleInputChange('phone', e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="addressLine1">Address Line 1</Label>
+              <Input
+                id="addressLine1"
+                type="text"
+                placeholder="House no, street, locality"
+                onChange={e => handleInputChange('addressLine1', e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="addressLine2">Address Line 2</Label>
+              <Input
+                id="addressLine2"
+                type="text"
+                placeholder="Apartment, landmark (optional)"
+                onChange={e => handleInputChange('addressLine2', e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="city">City</Label>
+                <Input
+                  id="city"
+                  type="text"
+                  onChange={e => handleInputChange('city', e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="state">State</Label>
+                <Input
+                  id="state"
+                  type="text"
+                  onChange={e => handleInputChange('state', e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="postalCode">Postal Code</Label>
+                <Input
+                  id="postalCode"
+                  type="text"
+                  onChange={e => handleInputChange('postalCode', e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="country">Country</Label>
+                <Input
+                  id="country"
+                  type="text"
+                  value={formData.country}
+                  onChange={e => handleInputChange('country', e.target.value)}
+                  required
+                />
+              </div>
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Signing up...' : 'Sign Up'}

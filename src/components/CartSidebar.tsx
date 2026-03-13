@@ -58,9 +58,11 @@ const CartSidebar = () => {
                                     <div className="w-20 h-24 rounded-md overflow-hidden bg-muted flex-shrink-0">
                                         <img
                                             src={
-                                                item.product.images
+                                                item.variantImage ||
+                                                (item.product.images
                                                     ? (Array.isArray(item.product.images) ? item.product.images[0] : item.product.images)
-                                                    : item.product.image || '/placeholder-image.jpg'
+                                                    : item.product.image) ||
+                                                '/placeholder-image.jpg'
                                             }
                                             alt={item.product.name}
                                             className="w-full h-full object-cover"

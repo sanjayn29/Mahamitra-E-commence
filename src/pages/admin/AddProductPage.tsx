@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { ArrowLeft, Package, Upload, X, ImageIcon } from 'lucide-react';
+import {
+  buildVariantDrafts,
+  buildVariantRows,
+  formatVariantOptionLabel,
+  normalizeVariantColors,
+  normalizeVariantSizes,
+  parseOptionList,
+  validateVariantDrafts,
+  VariantInventoryDraft,
+} from '@/lib/productVariants';
 import { toast } from 'sonner';
 
 const AddProductPage = () => {
@@ -16,7 +26,7 @@ const AddProductPage = () => {
   const [loading, setLoading] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [variantDrafts, setVariantDrafts] = useState<VariantInventoryDraft[]>([]);
   const [formData, setFormData] = useState({
     productId: '',
     name: '',
@@ -41,6 +51,62 @@ const AddProductPage = () => {
       ...prev,
       [field]: value
     }));
+  };
+
+  const parsedColors = parseOptionList(formData.colors);
+  const parsedSizes = parseOptionList(formData.sizes);
+  const effectiveColors = normalizeVariantColors(parsedColors);
+  const effectiveSizes = normalizeVariantSizes(parsedSizes);
+
+  useEffect(() => {
+    setVariantDrafts((previousDrafts) =>
+      buildVariantDrafts(effectiveColors, effectiveSizes, previousDrafts, imagePreview)
+    );
+  }, [formData.colors, formData.sizes, imagePreview]);
+
+  const updateVariantDraft = (color: string, field: 'image_url' | 'price_override', value: string) => {
+    setVariantDrafts((previousDrafts) =>
+      previousDrafts.map((draft) =>
+        draft.color.toLowerCase() === color.toLowerCase()
+          ? {
+              ...draft,
+              [field]: value,
+            }
+          : draft
+      )
+    );
+  };
+
+  const updateVariantStock = (color: string, size: string, value: string) => {
+    setVariantDrafts((previousDrafts) =>
+      previousDrafts.map((draft) =>
+        draft.color.toLowerCase() === color.toLowerCase()
+          ? {
+              ...draft,
+              sizeStocks: {
+                ...draft.sizeStocks,
+                [size]: value,
+              },
+            }
+          : draft
+      )
+    );
+  };
+
+  const getVariantInputId = (prefix: string, color: string) => `${prefix}-${color.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+
+  const handleVariantImageChange = (color: string, file?: File) => {
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      updateVariantDraft(color, 'image_url', String(reader.result || ''));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const clearVariantImage = (color: string) => {
+    updateVariantDraft(color, 'image_url', '');
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,6 +146,15 @@ const AddProductPage = () => {
       return;
     }
 
+    const validationMessage = validateVariantDrafts(variantDrafts, effectiveColors, effectiveSizes);
+
+    if (validationMessage) {
+      toast.error('Variant details missing', {
+        description: validationMessage
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -99,8 +174,8 @@ const AddProductPage = () => {
         cost: formData.cost ? parseInt(formData.cost) : 0,
         description: formData.description,
         status: formData.status,
-        sizes: formData.sizes.split(',').map(s => s.trim()).filter(s => s),
-        colors: formData.colors.split(',').map(c => c.trim()).filter(c => c),
+        sizes: parsedSizes,
+        colors: parsedColors,
         image: imageUrl,
         size_required: formData.size_required,
       };
@@ -114,6 +189,45 @@ const AddProductPage = () => {
 
       if (insertError) {
         throw insertError;
+      }
+
+      const { error: catalogError } = await supabase
+        .from('products')
+        .upsert(
+          {
+            product_public_id: formData.productId,
+            category: formData.category,
+          },
+          { onConflict: 'product_public_id' }
+        );
+
+      if (catalogError) {
+        throw catalogError;
+      }
+
+      const { data: catalogProduct, error: catalogFetchError } = await supabase
+        .from('products')
+        .select('id')
+        .eq('product_public_id', formData.productId)
+        .eq('category', formData.category)
+        .single();
+
+      if (catalogFetchError || !catalogProduct) {
+        throw catalogFetchError || new Error('Failed to resolve product catalog record');
+      }
+
+      const variantRows = buildVariantRows(variantDrafts, effectiveColors, effectiveSizes, {
+        product_id: catalogProduct.id,
+        product_public_id: formData.productId,
+        product_category: formData.category as 'women' | 'girls' | 'babies',
+      });
+
+      const { error: variantsError } = await supabase
+        .from('product_variants')
+        .upsert(variantRows, { onConflict: 'product_public_id,product_category,color,size' });
+
+      if (variantsError) {
+        throw variantsError;
       }
 
       console.log('Insert successful:', data);
@@ -135,6 +249,7 @@ const AddProductPage = () => {
         colors: '',
         size_required: true,
       });
+      setVariantDrafts([]);
       setImageFile(null);
       setImagePreview('');
 
@@ -352,6 +467,99 @@ const AddProductPage = () => {
                 />
                 <p className="text-xs text-muted-foreground">Separate colors with commas</p>
               </div>
+
+              {/* Variant Inventory */}
+              {variantDrafts.length > 0 && (
+                <div className="space-y-4 rounded-lg border border-border p-4">
+                  <div>
+                    <Label className="text-sm font-medium">Variant Inventory</Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Add one image per color and stock for every color/size combination.
+                    </p>
+                  </div>
+                  <div className="space-y-4">
+                    {variantDrafts.map((variant) => (
+                      <div key={variant.color} className="rounded-md border border-border p-3 space-y-3">
+                        <p className="text-sm font-semibold">
+                          {formatVariantOptionLabel(variant.color, 'Default color')}
+                        </p>
+                        <div className="space-y-2">
+                          <Label>Variant Image *</Label>
+                          {!variant.image_url ? (
+                            <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
+                              <ImageIcon size={24} className="mx-auto text-muted-foreground mb-2" />
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => handleVariantImageChange(variant.color, e.target.files?.[0])}
+                                className="hidden"
+                                id={getVariantInputId('variant-image-upload', variant.color)}
+                              />
+                              <Label htmlFor={getVariantInputId('variant-image-upload', variant.color)}>
+                                <Button type="button" variant="outline" className="cursor-pointer" asChild>
+                                  <span>
+                                    <Upload size={14} className="mr-2" />
+                                    Upload Image
+                                  </span>
+                                </Button>
+                              </Label>
+                            </div>
+                          ) : (
+                            <div className="relative">
+                              <img
+                                src={variant.image_url}
+                                alt={`${variant.color} variant`}
+                                className="w-full h-32 object-cover rounded-md border"
+                              />
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="icon"
+                                className="absolute top-2 right-2 h-7 w-7"
+                                onClick={() => clearVariantImage(variant.color)}
+                              >
+                                <X size={14} />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="space-y-2">
+                            <Label htmlFor={`variant-price-${variant.color}`}>Price Override (optional)</Label>
+                            <Input
+                              id={`variant-price-${variant.color}`}
+                              type="number"
+                              min="0"
+                              value={variant.price_override}
+                              onChange={(e) => updateVariantDraft(variant.color, 'price_override', e.target.value)}
+                              placeholder="Leave empty to use base price"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Stock by Size *</Label>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {effectiveSizes.map((size) => (
+                              <div key={`${variant.color}-${size}`} className="space-y-2">
+                                <Label htmlFor={`variant-stock-${variant.color}-${size}`}>
+                                  {formatVariantOptionLabel(size, 'Free Size')}
+                                </Label>
+                                <Input
+                                  id={`variant-stock-${variant.color}-${size}`}
+                                  type="number"
+                                  min="0"
+                                  value={variant.sizeStocks[size] || '0'}
+                                  onChange={(e) => updateVariantStock(variant.color, size, e.target.value)}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Status */}
               <div className="space-y-2">

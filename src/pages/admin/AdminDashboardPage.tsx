@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Package, ShoppingCart, BarChart3, ListChecks, LogOut, Ticket } from 'lucide-react';
 import { useAdmin } from '@/context/AdminContext';
+import AdminFinancialAnalytics from '@/components/finance/AdminFinancialAnalytics';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
@@ -76,8 +77,8 @@ const AdminDashboardPage = () => {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center p-6">
-        <div className="w-full max-w-4xl">
+      <main className="flex-1 p-6">
+        <div className="w-full max-w-6xl mx-auto space-y-10">
           <div className="text-center mb-12">
             <h1 className="font-serif text-4xl font-bold tracking-tight mb-3">
               Admin Dashboard
@@ -114,9 +115,11 @@ const AdminDashboardPage = () => {
             ))}
           </div>
 
-          <div className="mt-12 text-center text-sm text-muted-foreground">
+          <div className="text-center text-sm text-muted-foreground">
             <p>Select an option above to begin managing your store</p>
           </div>
+
+          <AdminFinancialAnalytics mode="dashboard" />
         </div>
       </main>
     </div>

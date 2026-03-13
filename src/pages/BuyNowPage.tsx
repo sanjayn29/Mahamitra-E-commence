@@ -5,12 +5,15 @@ import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import MainLayout from '@/layouts/MainLayout';
 import { fetchProductById, EnhancedProduct } from '@/services/productService';
 import { initiateRazorpayPayment } from '@/services/razorpayService';
+import { variantService, ProductVariant } from '@/services/variantService';
+import AddressBook from '@/components/AddressBook';
+import { Address } from '@/services/addressService';
+import { DEFAULT_VARIANT_SIZE } from '@/lib/productVariants';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
@@ -30,20 +33,26 @@ const BuyNowPage = () => {
   // Get product details from URL params
   const selectedSize = searchParams.get('size') || '';
   const selectedColor = searchParams.get('color') || '';
+  const selectedVariantId = searchParams.get('variantId') || '';
+  const requestedQuantity = Math.max(1, parseInt(searchParams.get('quantity') || '1', 10) || 1);
 
   // Coupon state
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount_amount: number } | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
-    fullName: user?.user_metadata?.full_name || user?.user_metadata?.name || '',
-    phoneNumber: user?.user_metadata?.phone || '',
+    fullName: '',
+    phoneNumber: '',
     email: user?.email || '',
     deliveryAddress: '',
     city: '',
     pincode: '',
+    state: '',
+    country: 'India',
     quantity: 1,
   });
 
@@ -68,6 +77,59 @@ const BuyNowPage = () => {
     loadProduct();
   }, [id, navigate]);
 
+  useEffect(() => {
+    const loadSelectedVariant = async () => {
+      if (!selectedVariantId) {
+        setSelectedVariant(null);
+        return;
+      }
+
+      try {
+        const variant = await variantService.getVariantById(selectedVariantId);
+        setSelectedVariant(variant);
+      } catch (error) {
+        console.error('Error loading selected variant:', error);
+        setSelectedVariant(null);
+      }
+    };
+
+    loadSelectedVariant();
+  }, [selectedVariantId]);
+
+  useEffect(() => {
+    if (!selectedVariant) {
+      setFormData((prev) => ({
+        ...prev,
+        quantity: requestedQuantity,
+      }));
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      quantity: Math.min(requestedQuantity, Math.max(1, selectedVariant.stock_quantity || 1)),
+    }));
+  }, [requestedQuantity, selectedVariant]);
+
+  useEffect(() => {
+    if (!selectedAddress) {
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      fullName: selectedAddress.full_name,
+      phoneNumber: selectedAddress.phone,
+      deliveryAddress: selectedAddress.address_line_2
+        ? `${selectedAddress.address_line_1}, ${selectedAddress.address_line_2}`
+        : selectedAddress.address_line_1,
+      city: selectedAddress.city,
+      pincode: selectedAddress.postal_code,
+      state: selectedAddress.state,
+      country: selectedAddress.country,
+    }));
+  }, [selectedAddress]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -76,7 +138,9 @@ const BuyNowPage = () => {
   const handleQuantityChange = (change: number) => {
     setFormData(prev => ({
       ...prev,
-      quantity: Math.max(1, prev.quantity + change)
+      quantity: selectedVariant
+        ? Math.max(1, Math.min(selectedVariant.stock_quantity, prev.quantity + change))
+        : Math.max(1, prev.quantity + change)
     }));
   };
 
@@ -86,7 +150,7 @@ const BuyNowPage = () => {
 
   const subtotal = isCartCheckout
     ? cartState.items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0)
-    : (product ? product.price * formData.quantity : 0);
+    : (product ? (selectedVariant?.price_override ?? product.price) * formData.quantity : 0);
 
   const discount = appliedCoupon ? Math.min(appliedCoupon.discount_amount, subtotal) : 0;
   const total = subtotal - discount;
@@ -142,9 +206,13 @@ const BuyNowPage = () => {
     }
 
     // Validation
-    if (!formData.fullName || !formData.phoneNumber || !formData.email ||
-      !formData.deliveryAddress || !formData.city || !formData.pincode) {
-      toast.error('Please fill all required fields');
+    if (!formData.fullName || !formData.phoneNumber || !formData.email) {
+      toast.error('Please fill all required personal details');
+      return;
+    }
+
+    if (!selectedAddress) {
+      toast.error('Please select or add a delivery address');
       return;
     }
 
@@ -155,6 +223,11 @@ const BuyNowPage = () => {
 
     if (formData.pincode.length !== 6) {
       toast.error('Please enter a valid 6-digit pincode');
+      return;
+    }
+
+    if (selectedVariant && formData.quantity > selectedVariant.stock_quantity) {
+      toast.error(`Only ${selectedVariant.stock_quantity} item(s) available for this variant`);
       return;
     }
 
@@ -170,9 +243,10 @@ const BuyNowPage = () => {
         checkoutItems = cartState.items.map(item => ({
           productId: item.product.id,
           productName: item.product.name,
-          productImage: item.product.images?.[0] || '',
+          productImage: item.variantImage || item.product.images?.[0] || '',
           selectedSize: item.size,
           selectedColor: item.color,
+          variantId: item.variantId || null,
           quantity: item.quantity,
           price: item.product.price,
         }));
@@ -180,12 +254,45 @@ const BuyNowPage = () => {
         checkoutItems = [{
           productId: product.id,
           productName: product.name,
-          productImage: product.image,
-          selectedSize,
-          selectedColor,
+          productImage: selectedVariant?.image_url || product.image,
+          selectedSize: selectedVariant?.size || selectedSize || DEFAULT_VARIANT_SIZE,
+          selectedColor: selectedVariant?.color || selectedColor,
+          variantId: selectedVariant?.id || null,
           quantity: formData.quantity,
-          price: product.price,
+          price: selectedVariant?.price_override ?? product.price,
         }];
+      }
+
+      const variantDemand = new Map<string, number>();
+      checkoutItems.forEach((item) => {
+        if (!item.variantId) {
+          return;
+        }
+
+        variantDemand.set(item.variantId, (variantDemand.get(item.variantId) || 0) + item.quantity);
+      });
+
+      if (variantDemand.size > 0) {
+        const variantIds = Array.from(variantDemand.keys());
+        const { data: variantRows, error: variantRowsError } = await supabase
+          .from('product_variants')
+          .select('id, color, size, stock_quantity')
+          .in('id', variantIds);
+
+        if (variantRowsError) {
+          throw variantRowsError;
+        }
+
+        const stockById = new Map((variantRows || []).map((row: any) => [row.id, row]));
+
+        for (const [variantId, requestedQty] of variantDemand.entries()) {
+          const row = stockById.get(variantId);
+          const availableQty = row?.stock_quantity ?? 0;
+          if (availableQty < requestedQty) {
+            const label = row ? `${row.color || 'Default'} / ${row.size || 'Free Size'}` : variantId;
+            throw new Error(`Insufficient stock for ${label}. Available: ${availableQty}, requested: ${requestedQty}`);
+          }
+        }
       }
 
       // Prepare order data for Razorpay
@@ -196,20 +303,26 @@ const BuyNowPage = () => {
         productImage: checkoutItems[0]?.productImage || '',
         selectedSize: isCartCheckout ? '' : checkoutItems[0]?.selectedSize || '',
         selectedColor: isCartCheckout ? '' : checkoutItems[0]?.selectedColor || '',
+        variantId: isCartCheckout ? null : checkoutItems[0]?.variantId || null,
         quantity: isCartCheckout ? checkoutItems.reduce((s, i) => s + i.quantity, 0) : formData.quantity,
-        price: isCartCheckout ? subtotal : product!.price,
+        price: isCartCheckout ? subtotal : (selectedVariant?.price_override ?? product!.price),
 
         // New array for future support
         items: checkoutItems,
 
         total: total,
         discount: discount,
+        addressId: selectedAddress.id,
         customerName: formData.fullName,
         customerEmail: formData.email,
         customerPhone: formData.phoneNumber,
-        deliveryAddress: formData.deliveryAddress,
-        city: formData.city,
-        pincode: formData.pincode,
+        deliveryAddress: selectedAddress.address_line_2
+          ? `${selectedAddress.address_line_1}, ${selectedAddress.address_line_2}`
+          : selectedAddress.address_line_1,
+        city: selectedAddress.city,
+        state: selectedAddress.state,
+        country: selectedAddress.country,
+        pincode: selectedAddress.postal_code,
         isCartCheckout // Pass flag
       };
 
@@ -349,45 +462,12 @@ const BuyNowPage = () => {
                   {/* Delivery Address */}
                   <div>
                     <h3 className="text-lg font-semibold mb-4">Delivery Address</h3>
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="deliveryAddress">Address *</Label>
-                        <Textarea
-                          id="deliveryAddress"
-                          name="deliveryAddress"
-                          value={formData.deliveryAddress}
-                          onChange={handleInputChange}
-                          required
-                          placeholder="House no., Building name, Street, Area"
-                          rows={3}
-                        />
-                      </div>
-                      <div className="grid md:grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="city">City *</Label>
-                          <Input
-                            id="city"
-                            name="city"
-                            value={formData.city}
-                            onChange={handleInputChange}
-                            required
-                            placeholder="Enter city"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="pincode">Pincode *</Label>
-                          <Input
-                            id="pincode"
-                            name="pincode"
-                            value={formData.pincode}
-                            onChange={handleInputChange}
-                            required
-                            placeholder="6-digit pincode"
-                            maxLength={6}
-                          />
-                        </div>
-                      </div>
-                    </div>
+                    <AddressBook
+                      selectable={true}
+                      selectedAddressId={selectedAddress?.id || null}
+                      onSelectAddress={setSelectedAddress}
+                      title="Choose Delivery Address"
+                    />
                   </div>
 
                   <Separator />
@@ -465,7 +545,7 @@ const BuyNowPage = () => {
                     {cartState.items.map((item, index) => (
                       <div key={item.id || index} className="flex gap-4 relative">
                         <img
-                          src={item.product.images?.[0] || '/placeholder-image.jpg'}
+                          src={item.variantImage || item.product.images?.[0] || '/placeholder-image.jpg'}
                           alt={item.product.name}
                           className="w-16 h-16 object-cover rounded"
                           onError={(e) => {
@@ -491,7 +571,7 @@ const BuyNowPage = () => {
                   <>
                     <div className="flex gap-4">
                       <img
-                        src={product!.image}
+                        src={selectedVariant?.image_url || product!.image}
                         alt={product!.name}
                         className="w-20 h-20 object-cover rounded"
                         onError={(e) => {
@@ -503,11 +583,11 @@ const BuyNowPage = () => {
                         <p className="text-xs text-muted-foreground mt-1">
                           Category: {product!.category}
                         </p>
-                        {selectedSize && (
-                          <p className="text-xs text-muted-foreground">Size: {selectedSize}</p>
+                        {(selectedVariant?.size || selectedSize) && (
+                          <p className="text-xs text-muted-foreground">Size: {selectedVariant?.size || selectedSize}</p>
                         )}
-                        {selectedColor && (
-                          <p className="text-xs text-muted-foreground">Color: {selectedColor}</p>
+                        {(selectedVariant?.color || selectedColor) && (
+                          <p className="text-xs text-muted-foreground">Color: {selectedVariant?.color || selectedColor}</p>
                         )}
                       </div>
                     </div>
@@ -535,10 +615,14 @@ const BuyNowPage = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => handleQuantityChange(1)}
+                          disabled={!!selectedVariant && formData.quantity >= selectedVariant.stock_quantity}
                         >
                           +
                         </Button>
                       </div>
+                      {selectedVariant && (
+                        <p className="mt-2 text-xs text-muted-foreground">{selectedVariant.stock_quantity} available</p>
+                      )}
                     </div>
                   </>
                 )}
@@ -549,7 +633,11 @@ const BuyNowPage = () => {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>Amount</span>
-                    <span>₹{isCartCheckout ? cartState.items.reduce((s, i) => s + (i.product.price * i.quantity), 0).toLocaleString() : product!.price.toLocaleString()}</span>
+                    <span>
+                      ₹{isCartCheckout
+                        ? cartState.items.reduce((s, i) => s + (i.product.price * i.quantity), 0).toLocaleString()
+                        : (selectedVariant?.price_override ?? product!.price).toLocaleString()}
+                    </span>
                   </div>
                   {!isCartCheckout && (
                     <div className="flex justify-between text-sm">
@@ -572,6 +660,11 @@ const BuyNowPage = () => {
                     <span>Total</span>
                     <span className="text-primary">₹{total.toLocaleString()}</span>
                   </div>
+                  {selectedAddress && (
+                    <div className="pt-2 text-xs text-muted-foreground">
+                      Delivering to: {selectedAddress.address_line_1}, {selectedAddress.city}, {selectedAddress.state} {selectedAddress.postal_code}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

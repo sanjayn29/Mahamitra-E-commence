@@ -106,9 +106,9 @@ const Orders = () => {
 
       toast.success('Order status updated successfully');
       fetchOrders(); // Refresh the list
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating order status:', error);
-      toast.error('Failed to update order status');
+      toast.error(error?.message || 'Failed to update order status');
     }
   };
 
