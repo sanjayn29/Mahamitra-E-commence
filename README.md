@@ -23,7 +23,7 @@ Mahamitra is a premium e-commerce platform dedicated to exquisite women's textil
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) (v18 or higher)
-- npm or yarn
+- npm or yarn 
 
 ### Installation
 
