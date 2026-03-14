@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Share2, Truck, RefreshCw, Shield, ChevronLeft, Loader2, ShoppingBag, ShoppingCart } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
@@ -182,18 +182,64 @@ const ProductPage = () => {
       || null
     : null;
   const baseImages = product?.images || [];
-  const leadImage = selectedVariant?.image_url || baseImages[0] || '';
-  const galleryImages = leadImage
-    ? [leadImage, ...baseImages.filter((image) => image !== leadImage)]
-    : baseImages;
-  const activeImage = galleryImages[selectedImage] || galleryImages[0] || '';
+
+  const galleryItems = useMemo(() => {
+    const items: { image: string; color?: string }[] = [];
+    const usedImages = new Set<string>();
+
+    if (hasVariantInventory) {
+      availableColors.forEach((color) => {
+        const colorKey = normalizeOption(color);
+        const variantsForColor = variants.filter((variant) => normalizeOption(variant.color) === colorKey);
+        const preferredImage = variantsForColor.find((variant) =>
+          normalizeOption(variant.size) === normalizeOption(showSizeSelector ? selectedSize : (selectedSize || DEFAULT_VARIANT_SIZE))
+          && !!variant.image_url
+        )?.image_url
+          || variantsForColor.find((variant) => variant.stock_quantity > 0 && !!variant.image_url)?.image_url
+          || variantsForColor.find((variant) => !!variant.image_url)?.image_url;
+
+        if (preferredImage && !usedImages.has(preferredImage)) {
+          usedImages.add(preferredImage);
+          items.push({ image: preferredImage, color });
+        }
+      });
+    }
+
+    baseImages.forEach((image) => {
+      if (image && !usedImages.has(image)) {
+        usedImages.add(image);
+        items.push({ image });
+      }
+    });
+
+    return items;
+  }, [hasVariantInventory, availableColors, variants, showSizeSelector, selectedSize, baseImages]);
+
+  const activeImage = galleryItems[selectedImage]?.image || galleryItems[0]?.image || '';
   const activePrice = selectedVariant?.price_override ?? product?.price ?? 0;
   const availableStock = selectedVariant?.stock_quantity ?? 0;
   const effectiveStock = hasVariantInventory ? availableStock > 0 : product?.inStock;
 
   useEffect(() => {
-    setSelectedImage(0);
-  }, [selectedVariant?.id]);
+    if (selectedImage >= galleryItems.length) {
+      setSelectedImage(0);
+    }
+  }, [selectedImage, galleryItems.length]);
+
+  useEffect(() => {
+    const selectedColorKey = normalizeOption(selectedColor);
+    if (!selectedColorKey) {
+      return;
+    }
+
+    const colorImageIndex = galleryItems.findIndex(
+      (item) => item.color && normalizeOption(item.color) === selectedColorKey
+    );
+
+    if (colorImageIndex >= 0 && colorImageIndex !== selectedImage) {
+      setSelectedImage(colorImageIndex);
+    }
+  }, [selectedColor, galleryItems, selectedImage]);
 
   useEffect(() => {
     if (!hasVariantInventory) {
@@ -356,17 +402,22 @@ const ProductPage = () => {
                 className="w-full h-full object-cover"
               />
             </div>
-            {galleryImages.length > 1 && (
+            {galleryItems.length > 1 && (
               <div className="flex gap-4">
-                {galleryImages.map((image, index) => (
+                {galleryItems.map((item, index) => (
                   <button
-                    key={index}
-                    onClick={() => setSelectedImage(index)}
+                    key={`${item.image}-${index}`}
+                    onClick={() => {
+                      setSelectedImage(index);
+                      if (item.color) {
+                        setSelectedColor(item.color);
+                      }
+                    }}
                     className={`w-20 h-24 rounded-lg overflow-hidden border-2 transition-colors ${selectedImage === index ? 'border-primary' : 'border-transparent'
                       }`}
                   >
                     <img
-                      src={image}
+                      src={item.image}
                       alt={`${product.name} ${index + 1}`}
                       className="w-full h-full object-cover"
                     />

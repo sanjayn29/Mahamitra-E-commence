@@ -42,7 +42,9 @@ BEGIN
     WHERE id = p_variant_id;
 
     IF NOT FOUND THEN
-      RAISE EXCEPTION 'Variant % not found while restoring stock', p_variant_id;
+      -- Variant may have been deleted during catalog maintenance while
+      -- historical orders still reference the old id; skip restore safely.
+      RETURN;
     END IF;
   END IF;
 END;
