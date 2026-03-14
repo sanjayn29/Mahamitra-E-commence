@@ -8,7 +8,7 @@ Mahamitra is a premium e-commerce platform dedicated to exquisite women's textil
 - **Product Showcase**: Detailed product views with high-quality imagery and size/color variations.
 - **Shopping Experience**: Intuitive cart management and a secure, multi-step checkout process.
 - **Responsive Layout**: Seamless shopping experience across all devices, from mobile to desktop.
-- **Admin Dashboard**: Comprehensive management tools for products and orders.
+- **Admin Dashboard**: Comprehensive management tools for products and orders and finance management.
 
 ## Tech Stack
 
