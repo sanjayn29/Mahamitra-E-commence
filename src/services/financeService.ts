@@ -1,6 +1,59 @@
 import { supabase } from '@/lib/supabaseClient';
 
-type ProductCategory = 'women' | 'girls' | 'babies' | 'other';
+type ProductCategory = 'women' | 'girls' | 'babies';
+
+const normalizeCategory = (category: ProductCategory | string | null | undefined): ProductCategory => {
+  switch (String(category || '').toLowerCase()) {
+    case 'women':
+      return 'women';
+    case 'girls':
+      return 'girls';
+    case 'babies':
+    case 'baies':
+    case 'baby':
+      return 'babies';
+    default:
+      return 'girls';
+  }
+};
+
+const normalizeProductId = (productId: string | null | undefined) => String(productId || '').trim().toUpperCase();
+
+const inferCategoryFromProductId = (productId: string | null | undefined): ProductCategory | null => {
+  const normalizedId = normalizeProductId(productId);
+
+  if (!normalizedId) {
+    return null;
+  }
+
+  if (normalizedId.includes('BAB')) {
+    return 'babies';
+  }
+
+  if (normalizedId.includes('WOM')) {
+    return 'women';
+  }
+
+  if (normalizedId.includes('GIR')) {
+    return 'girls';
+  }
+
+  return null;
+};
+
+const resolveCategory = (
+  productId: string,
+  baseProductMap: Map<string, BaseProductRow>
+): ProductCategory => {
+  const normalizedId = normalizeProductId(productId);
+  const baseCategory = baseProductMap.get(normalizedId)?.category;
+
+  if (baseCategory) {
+    return normalizeCategory(baseCategory);
+  }
+
+  return inferCategoryFromProductId(productId) || 'girls';
+};
 
 interface OrderRow {
   id: string;
@@ -83,7 +136,7 @@ const dayFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'nu
 const toNumber = (value: unknown) => Number(value || 0);
 
 const formatCategory = (category: ProductCategory | string) => {
-  switch (String(category).toLowerCase()) {
+  switch (normalizeCategory(category)) {
     case 'women':
       return 'Women';
     case 'girls':
@@ -91,7 +144,7 @@ const formatCategory = (category: ProductCategory | string) => {
     case 'babies':
       return 'Babies';
     default:
-      return 'Other';
+      return 'Girls';
   }
 };
 
@@ -190,11 +243,11 @@ const fetchBaseProducts = async () => {
   const baseProductMap = new Map<string, BaseProductRow>();
 
   mergedRows.forEach((row) => {
-    baseProductMap.set(row.productId, {
+    baseProductMap.set(normalizeProductId(row.productId), {
       productId: row.productId,
       name: row.name,
       cost: toNumber(row.cost),
-      category: catalogMap.get(row.productId) || row.category,
+      category: normalizeCategory(catalogMap.get(row.productId) || row.category),
     });
   });
 
@@ -251,7 +304,7 @@ export const financeService = {
 
     const categoryTotals = new Map<string, number>();
     completedOrders.forEach((order) => {
-      const category = formatCategory(baseProductMap.get(order.product_id)?.category || 'other');
+      const category = formatCategory(resolveCategory(order.product_id, baseProductMap));
       categoryTotals.set(category, (categoryTotals.get(category) || 0) + order.total_amount);
     });
 
@@ -337,7 +390,7 @@ export const financeService = {
 
     const revenueByCategoryMap = new Map<string, number>();
     completedOrders.forEach((order) => {
-      const category = formatCategory(baseProductMap.get(order.product_id)?.category || 'other');
+      const category = formatCategory(resolveCategory(order.product_id, baseProductMap));
       revenueByCategoryMap.set(category, (revenueByCategoryMap.get(category) || 0) + order.total_amount);
     });
 
@@ -348,7 +401,7 @@ export const financeService = {
 
     const variantRows = (variantsRes.data || []) as VariantRow[];
     const inventoryValue = variantRows.reduce((sum, variant) => {
-      const baseProduct = baseProductMap.get(variant.product_public_id);
+      const baseProduct = baseProductMap.get(normalizeProductId(variant.product_public_id));
       const effectivePrice = variant.price_override ?? baseProduct?.cost ?? 0;
       return sum + toNumber(variant.stock_quantity) * toNumber(effectivePrice);
     }, 0);
