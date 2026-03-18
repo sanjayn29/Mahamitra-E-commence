@@ -1,7 +1,8 @@
 import { fetchAllProducts, EnhancedProduct } from './productService';
 
-const SUPABASE_URL = 'https://zikguihpxnvbjcunybkt.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_TMuMQtHWtrxQTdRU40xJHw_cnUBaoYj';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const EDGE_FUNCTION_NAMES = ['super-processor', 'groq-chat'];
 
 // Filters returned by the AI
 export interface AIFilters {
@@ -20,25 +21,91 @@ export interface ChatMessage {
   timestamp: Date;
 }
 
+const CATEGORY_KEYWORDS: Record<string, string[]> = {
+  women: ['women', 'woman', 'ladies'],
+  girls: ['girls', 'girl', 'kids', 'kid'],
+  babies: ['babies', 'baby', 'infant', 'newborn'],
+};
+
+const COMMON_COLORS = [
+  'red', 'blue', 'green', 'black', 'white', 'pink', 'purple', 'yellow', 'orange', 'brown', 'grey', 'gray', 'maroon',
+  'navy', 'teal', 'gold', 'silver', 'beige', 'cream'
+];
+
+const getFiltersFromHeuristics = (message: string): AIFilters => {
+  const text = message.toLowerCase();
+  const filters: AIFilters = {};
+
+  const underMatch = text.match(/(?:under|below|less\s+than)\s*₹?\s*(\d[\d,]*)/i);
+  if (underMatch?.[1]) {
+    filters.price = Number(underMatch[1].replace(/,/g, ''));
+  }
+
+  const budgetMatch = text.match(/(?:budget|price)\s*₹?\s*(\d[\d,]*)/i);
+  if (!filters.price && budgetMatch?.[1]) {
+    filters.price = Number(budgetMatch[1].replace(/,/g, ''));
+  }
+
+  const matchedColor = COMMON_COLORS.find((color) => text.includes(color));
+  if (matchedColor) {
+    filters.color = matchedColor;
+  }
+
+  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    if (keywords.some((keyword) => text.includes(keyword))) {
+      filters.category = category;
+      break;
+    }
+  }
+
+  if (/top\s*rated|best\s*rated|rating/i.test(text)) {
+    filters.sort = 'rating';
+  } else if (/most\s*ordered|popular|trending|bestseller/i.test(text)) {
+    filters.sort = 'orders_count';
+  }
+
+  return filters;
+};
+
 /**
  * Call the Groq Edge Function to parse a user message into structured filters
  */
 export const getFiltersFromAI = async (message: string): Promise<AIFilters> => {
-  const res = await fetch(
-    `${SUPABASE_URL}/functions/v1/super-processor`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ message }),
-    }
-  );
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    throw new Error('Chatbot is not configured: missing Supabase environment variables');
+  }
 
-  if (!res.ok) {
-    const errorBody = await res.text();
-    console.error('Edge function error:', res.status, errorBody);
-    throw new Error(`AI service error (${res.status}): ${errorBody}`);
+  let res: Response | null = null;
+  let lastError = '';
+
+  for (const functionName of EDGE_FUNCTION_NAMES) {
+    const endpoint = `${SUPABASE_URL}/functions/v1/${functionName}`;
+
+    try {
+      res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ message }),
+      });
+
+      if (res.ok) {
+        break;
+      }
+
+      const errorBody = await res.text();
+      lastError = `${functionName} -> ${res.status}: ${errorBody}`;
+    } catch (error) {
+      lastError = `${functionName} -> network error: ${String(error)}`;
+    }
+  }
+
+  if (!res || !res.ok) {
+    console.error('Edge function error:', lastError);
+    throw new Error(`AI service error: ${lastError || 'No reachable edge function'}`);
   }
 
   const text = await res.text();
@@ -64,7 +131,14 @@ export const getProductsFromAI = async (
   userMessage: string
 ): Promise<{ filters: AIFilters; products: EnhancedProduct[]; summary: string }> => {
   // 1. Get structured filters from AI
-  const filters = await getFiltersFromAI(userMessage);
+  let filters: AIFilters;
+
+  try {
+    filters = await getFiltersFromAI(userMessage);
+  } catch (error) {
+    console.warn('AI filter extraction failed, using heuristic fallback:', error);
+    filters = getFiltersFromHeuristics(userMessage);
+  }
 
   // 2. Fetch all products
   const allProducts = await fetchAllProducts();
