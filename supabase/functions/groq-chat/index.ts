@@ -15,6 +15,145 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const ALLOWED_AUDIENCE = ["women", "girls", "babies"];
+const ALLOWED_SORT = ["rating", "orders_count"];
+const ALLOWED_PRODUCT_TYPES = [
+  "saree",
+  "kurti",
+  "frock",
+  "dress",
+  "lehenga",
+  "gown",
+  "blouse",
+  "top",
+  "skirt",
+  "salwar",
+  "suit",
+  "dupatta",
+  "co-ord",
+  "nighty",
+  "jumpsuit",
+];
+
+const PRODUCT_TYPE_ALIASES: Record<string, string> = {
+  sari: "saree",
+  sarees: "saree",
+  saree: "saree",
+  kurtis: "kurti",
+  kurta: "kurti",
+  kurti: "kurti",
+  frocks: "frock",
+  frock: "frock",
+  dresses: "dress",
+  dress: "dress",
+  lehengas: "lehenga",
+  lehenga: "lehenga",
+  gowns: "gown",
+  gown: "gown",
+  blouses: "blouse",
+  blouse: "blouse",
+  tops: "top",
+  top: "top",
+  skirts: "skirt",
+  skirt: "skirt",
+  salwars: "salwar",
+  salwar: "salwar",
+  suits: "suit",
+  suit: "suit",
+  dupattas: "dupatta",
+  dupatta: "dupatta",
+  coord: "co-ord",
+  "co-ord": "co-ord",
+  "co ord": "co-ord",
+  nighties: "nighty",
+  nighty: "nighty",
+  jumpsuits: "jumpsuit",
+  jumpsuit: "jumpsuit",
+};
+
+const COLOR_ALIASES: Record<string, string> = {
+  grey: "gray",
+  offwhite: "off white",
+  "off-white": "off white",
+};
+
+const safeString = (value: unknown): string => {
+  if (typeof value !== "string") return "";
+  return value.trim().toLowerCase();
+};
+
+const normalizeProductType = (value: unknown): string | null => {
+  const raw = safeString(value).replace(/\s+/g, " ");
+  if (!raw) return null;
+  const aliased = PRODUCT_TYPE_ALIASES[raw] || raw;
+  return ALLOWED_PRODUCT_TYPES.includes(aliased) ? aliased : null;
+};
+
+const normalizeAudience = (value: unknown): string | null => {
+  const raw = safeString(value);
+  return ALLOWED_AUDIENCE.includes(raw) ? raw : null;
+};
+
+const normalizeColor = (value: unknown): string | null => {
+  const raw = safeString(value).replace(/\s+/g, " ");
+  if (!raw) return null;
+  return COLOR_ALIASES[raw] || raw;
+};
+
+const normalizeSort = (value: unknown): string | null => {
+  const raw = safeString(value);
+  return ALLOWED_SORT.includes(raw) ? raw : null;
+};
+
+const extractJsonObject = (raw: string): Record<string, unknown> | null => {
+  const cleaned = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start !== -1 && end !== -1 && end > start) {
+      try {
+        return JSON.parse(cleaned.slice(start, end + 1));
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+};
+
+const sanitizeFilters = (raw: Record<string, unknown>) => {
+  // Backward compatibility: old prompt may return category instead of audience/product_type
+  const categoryValue = safeString(raw.category);
+  const audience =
+    normalizeAudience(raw.audience) ||
+    normalizeAudience(raw.category) ||
+    null;
+
+  const productType =
+    normalizeProductType(raw.product_type) ||
+    (categoryValue && !ALLOWED_AUDIENCE.includes(categoryValue)
+      ? normalizeProductType(categoryValue)
+      : null);
+
+  const numericPrice = Number(raw.price);
+  const price = Number.isFinite(numericPrice) && numericPrice > 0 ? Math.round(numericPrice) : null;
+
+  const strict = raw.strict !== false;
+
+  return {
+    price,
+    color: normalizeColor(raw.color),
+    audience,
+    category: audience, // keep `category` for existing frontend compatibility
+    product_type: productType,
+    sort: normalizeSort(raw.sort),
+    strict,
+  };
+};
+
 serve(async (req) => {
   // ── Handle preflight CORS ──
   if (req.method === "OPTIONS") {
@@ -35,28 +174,33 @@ serve(async (req) => {
     }
 
     const prompt = `
-You are an AI assistant for a women's clothing ecommerce website called Mahamitra.
+You are a strict filter extractor for Mahamitra ecommerce.
 
-Your task:
-Extract filters from the user message and return ONLY valid JSON.
+Goal:
+Return ONE JSON object that maps user intent to exact search filters.
 
-Allowed fields:
-- price (number) — maximum price the user wants
-- color (string)
-- category (string) — e.g. "saree", "kurta", "lehenga", "dress", "women", "girls", "babies"
-- sort ("rating" | "orders_count")
+JSON schema:
+{
+  "price": number | null,
+  "color": string | null,
+  "audience": "women" | "girls" | "babies" | null,
+  "product_type": "saree" | "kurti" | "frock" | "dress" | "lehenga" | "gown" | "blouse" | "top" | "skirt" | "salwar" | "suit" | "dupatta" | "co-ord" | "nighty" | "jumpsuit" | null,
+  "sort": "rating" | "orders_count" | null,
+  "strict": true
+}
 
-Rules:
-- If price not mentioned, omit it
-- If color not mentioned, omit it
-- If category not mentioned, omit it
-- If user says "top rated", use sort = "rating"
-- If user says "most ordered" or "popular", use sort = "orders_count"
+Critical rules:
+1) If the user asks a specific product type (example: saree), set product_type exactly and DO NOT generalize.
+2) Never convert product_type into audience. "green saree" means product_type="saree", not "women".
+3) Use audience only when explicitly asked (women/girls/babies).
+4) If price is not mentioned, use null.
+5) If color is not mentioned, use null.
+6) For "top rated", set sort="rating".
+7) For "popular", "most ordered", "best seller", set sort="orders_count".
+8) Output only JSON. No markdown. No explanations.
 
 User message:
 "${message}"
-
-Return JSON only. No explanation. No markdown.
 `;
 
     const groqResponse = await fetch(
@@ -70,6 +214,7 @@ Return JSON only. No explanation. No markdown.
         body: JSON.stringify({
           model: "llama-3.3-70b-versatile",
           messages: [{ role: "user", content: prompt }],
+          response_format: { type: "json_object" },
           temperature: 0.2,
         }),
       }
@@ -93,8 +238,18 @@ Return JSON only. No explanation. No markdown.
     }
 
     const aiReply = data.choices[0].message.content;
+    const parsed = extractJsonObject(String(aiReply));
 
-    return new Response(aiReply, {
+    if (!parsed) {
+      return new Response(
+        JSON.stringify({ error: "Failed to parse model JSON", raw: aiReply }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const sanitized = sanitizeFilters(parsed);
+
+    return new Response(JSON.stringify(sanitized), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
