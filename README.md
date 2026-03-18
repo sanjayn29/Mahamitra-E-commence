@@ -43,7 +43,7 @@ Mahamitra is a premium e-commerce platform dedicated to exquisite women's textil
    ```
 
 4. Start the development server:
-   ```sh
+   ``` sh
    npm run dev
    ```
 
