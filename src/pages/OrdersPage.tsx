@@ -46,6 +46,7 @@ const statusConfig: Record<string, { icon: React.ElementType; color: string; lab
 const OrdersPage = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -88,6 +89,48 @@ const OrdersPage = () => {
 
   const getStatusInfo = (status: string) => {
     return statusConfig[status] || statusConfig.pending;
+  };
+
+  const canCancelOrder = (status: string) => ['pending', 'confirmed', 'processing'].includes(status);
+
+  const handleCancelOrder = async (order: Order) => {
+    if (!canCancelOrder(order.order_status)) {
+      toast.error('This order can no longer be cancelled.');
+      return;
+    }
+
+    const confirmed = window.confirm('Cancel this order? If payment is completed, refund will be credited to your wallet.');
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setCancellingOrderId(order.id);
+
+      const { data, error } = await supabase
+        .rpc('cancel_order_and_credit_wallet', { p_order_id: order.id });
+
+      if (error) {
+        throw error;
+      }
+
+      const result = Array.isArray(data) ? data[0] : data;
+      const credited = Number(result?.wallet_credited || 0);
+      const walletBalance = Number(result?.wallet_balance || 0);
+
+      if (credited > 0) {
+        toast.success(`Order cancelled. ₹${credited.toLocaleString()} credited to wallet. Wallet balance: ₹${walletBalance.toLocaleString()}`);
+      } else {
+        toast.success('Order cancelled successfully.');
+      }
+
+      await fetchOrders();
+    } catch (error: any) {
+      console.error('Error cancelling order:', error);
+      toast.error(error?.message || 'Failed to cancel order');
+    } finally {
+      setCancellingOrderId(null);
+    }
   };
 
   const handleDownloadReceipt = async (order: Order) => {
@@ -189,15 +232,28 @@ const OrdersPage = () => {
                             </div>
 
                             {/* Download Receipt Button */}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDownloadReceipt(order)}
-                              className="text-primary hover:bg-primary/10"
-                            >
-                              <Download size={16} className="mr-1" />
-                              Receipt
-                            </Button>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDownloadReceipt(order)}
+                                className="text-primary hover:bg-primary/10"
+                              >
+                                <Download size={16} className="mr-1" />
+                                Receipt
+                              </Button>
+                              {canCancelOrder(order.order_status) && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleCancelOrder(order)}
+                                  disabled={cancellingOrderId === order.id}
+                                  className="text-destructive hover:bg-destructive/10"
+                                >
+                                  {cancellingOrderId === order.id ? 'Cancelling...' : 'Cancel Order'}
+                                </Button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { Loader2, ShoppingBag, ArrowLeft, Tag, X } from 'lucide-react';
+import { Loader2, ShoppingBag, ArrowLeft, Tag, X, Wallet } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,6 +40,8 @@ const BuyNowPage = () => {
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount_amount: number } | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [useWallet, setUseWallet] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
 
@@ -130,6 +132,34 @@ const BuyNowPage = () => {
     }));
   }, [selectedAddress]);
 
+  useEffect(() => {
+    const loadWalletBalance = async () => {
+      if (!user) {
+        setWalletBalance(0);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('wallet_balance')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (error) {
+          throw error;
+        }
+
+        setWalletBalance(Number(data?.wallet_balance || 0));
+      } catch (error) {
+        console.error('Error loading wallet balance:', error);
+        setWalletBalance(0);
+      }
+    };
+
+    loadWalletBalance();
+  }, [user]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -154,6 +184,8 @@ const BuyNowPage = () => {
 
   const discount = appliedCoupon ? Math.min(appliedCoupon.discount_amount, subtotal) : 0;
   const total = subtotal - discount;
+  const walletUsed = useWallet ? Math.min(walletBalance, total) : 0;
+  const payableAmount = Math.max(0, total - walletUsed);
 
   const handleApplyCoupon = async () => {
     const trimmed = couponCode.trim().toUpperCase();
@@ -311,6 +343,8 @@ const BuyNowPage = () => {
         items: checkoutItems,
 
         total: total,
+        walletUsed,
+        payableAmount,
         discount: discount,
         addressId: selectedAddress.id,
         customerName: formData.fullName,
@@ -524,7 +558,9 @@ const BuyNowPage = () => {
                         Processing Payment...
                       </>
                     ) : (
-                      `Pay Now - ₹${total.toLocaleString()}`
+                      payableAmount > 0
+                        ? `Pay Now - ₹${payableAmount.toLocaleString()}`
+                        : 'Place Order using Wallet'
                     )}
                   </Button>
                 </form>
@@ -655,10 +691,35 @@ const BuyNowPage = () => {
                       <span>-₹{discount.toLocaleString()}</span>
                     </div>
                   )}
+                  <div className="rounded-md border p-3 space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <Wallet size={16} className="text-primary" />
+                        <span>Wallet Balance</span>
+                      </div>
+                      <span className="font-medium">₹{walletBalance.toLocaleString()}</span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant={useWallet ? 'default' : 'outline'}
+                      size="sm"
+                      className="w-full"
+                      onClick={() => setUseWallet((prev) => !prev)}
+                      disabled={walletBalance <= 0}
+                    >
+                      {useWallet ? 'Wallet Applied' : 'Use Wallet Balance'}
+                    </Button>
+                  </div>
+                  {walletUsed > 0 && (
+                    <div className="flex justify-between text-sm text-green-600">
+                      <span>Wallet Used</span>
+                      <span>-₹{walletUsed.toLocaleString()}</span>
+                    </div>
+                  )}
                   <Separator />
                   <div className="flex justify-between text-lg font-bold">
-                    <span>Total</span>
-                    <span className="text-primary">₹{total.toLocaleString()}</span>
+                    <span>Payable</span>
+                    <span className="text-primary">₹{payableAmount.toLocaleString()}</span>
                   </div>
                   {selectedAddress && (
                     <div className="pt-2 text-xs text-muted-foreground">

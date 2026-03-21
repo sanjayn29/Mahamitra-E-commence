@@ -40,6 +40,8 @@ interface OrderData {
   quantity: number;
   price: number;
   total: number;
+  walletUsed?: number;
+  payableAmount?: number;
   discount: number;
   addressId?: string | null;
   customerName: string;
@@ -62,12 +64,33 @@ interface OrderData {
   }>;
 }
 
+interface WalletTopupData {
+  amount: number;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+}
+
 // Initialize Razorpay Payment
 export const initiateRazorpayPayment = (
   orderData: OrderData,
   onSuccess: (paymentId: string, orderId: string) => void,
   onFailure: (error: string) => void
 ) => {
+  const walletUsed = Math.max(0, Number(orderData.walletUsed || 0));
+  const payableAmount = Math.max(0, Number(orderData.payableAmount ?? orderData.total));
+
+  if (payableAmount === 0) {
+    saveOrderToDatabase(orderData, `WALLET_${Date.now()}`)
+      .then((savedOrder) => onSuccess(savedOrder.payment_id || `WALLET_${Date.now()}`, savedOrder.id))
+      .catch((error: any) => {
+        console.error('Error saving wallet order:', error);
+        const detail = error?.message || error?.details || 'Failed to place wallet order';
+        onFailure(String(detail));
+      });
+    return;
+  }
+
   const razorpayKeyId = import.meta.env.VITE_RAZORPAY_KEY_ID;
 
   if (!razorpayKeyId) {
@@ -83,7 +106,7 @@ export const initiateRazorpayPayment = (
 
   const options: RazorpayOptions = {
     key: razorpayKeyId,
-    amount: orderData.total * 100, // Convert to paise (₹1 = 100 paise)
+    amount: payableAmount * 100, // Convert to paise (₹1 = 100 paise)
     currency: 'INR',
     name: 'Mahamitra Ecommerce',
     description: orderData.productName,
@@ -120,6 +143,7 @@ export const initiateRazorpayPayment = (
       size: orderData.selectedSize,
       color: orderData.selectedColor,
       variant_id: orderData.variantId || '',
+      wallet_used: String(walletUsed),
       address: `${orderData.deliveryAddress}, ${orderData.city} - ${orderData.pincode}`,
     },
     theme: {
@@ -128,6 +152,73 @@ export const initiateRazorpayPayment = (
     modal: {
       ondismiss: function () {
         onFailure('Payment cancelled by user');
+      },
+    },
+  };
+
+  const razorpayInstance = new window.Razorpay(options);
+  razorpayInstance.open();
+};
+
+export const initiateWalletTopupPayment = (
+  topupData: WalletTopupData,
+  onSuccess: (paymentId: string, newBalance: number) => void,
+  onFailure: (error: string) => void
+) => {
+  const razorpayKeyId = import.meta.env.VITE_RAZORPAY_KEY_ID;
+
+  if (!razorpayKeyId) {
+    onFailure('Razorpay configuration is missing. Please contact support.');
+    return;
+  }
+
+  if (typeof window.Razorpay === 'undefined') {
+    onFailure('Payment gateway is not available. Please refresh the page.');
+    return;
+  }
+
+  const amount = Math.max(1, Math.round(topupData.amount));
+
+  const options: RazorpayOptions = {
+    key: razorpayKeyId,
+    amount: amount * 100,
+    currency: 'INR',
+    name: 'Mahamitra Ecommerce',
+    description: 'Wallet Top-up',
+    image: '/logo.png',
+    handler: async function (response: RazorpayResponse) {
+      try {
+        const { data, error } = await supabase.rpc('credit_wallet_balance', {
+          p_amount: amount,
+          p_reference_id: `TOPUP_${response.razorpay_payment_id}`,
+        });
+
+        if (error) {
+          throw error;
+        }
+
+        onSuccess(response.razorpay_payment_id, Number(data || 0));
+      } catch (error: any) {
+        console.error('Error crediting wallet balance after top-up:', error);
+        const detail = error?.message || error?.details || 'Wallet top-up credit failed';
+        onFailure(`Payment completed but wallet update failed: ${detail}`);
+      }
+    },
+    prefill: {
+      name: topupData.customerName,
+      email: topupData.customerEmail,
+      contact: topupData.customerPhone,
+    },
+    notes: {
+      purpose: 'wallet_topup',
+      amount: String(amount),
+    },
+    theme: {
+      color: '#000000',
+    },
+    modal: {
+      ondismiss: function () {
+        onFailure('Wallet top-up cancelled by user');
       },
     },
   };
@@ -213,17 +304,54 @@ const saveOrderToDatabase = async (orderData: OrderData, paymentId: string) => {
     created_at: new Date().toISOString(),
   }));
 
+  const walletUsed = Math.max(0, Number(orderData.walletUsed || 0));
+  let walletDebited = false;
+
+  if (walletUsed > 0) {
+    const { error: walletError } = await supabase.rpc('debit_wallet_balance', {
+      p_amount: walletUsed,
+      p_reference_id: paymentId,
+    });
+
+    if (walletError) {
+      console.error('Wallet debit failed:', walletError);
+      throw walletError;
+    }
+
+    walletDebited = true;
+  }
+
   const { data, error } = await supabase
     .from('orders')
     .insert(orderRows)
     .select();
 
   if (error) {
+    if (walletDebited) {
+      const { error: rollbackError } = await supabase.rpc('credit_wallet_balance', {
+        p_amount: walletUsed,
+        p_reference_id: `ROLLBACK_${paymentId}`,
+      });
+      if (rollbackError) {
+        console.error('Wallet rollback failed after order insert error:', rollbackError);
+      }
+    }
+
     console.error('Database error:', error);
     throw error;
   }
 
   if (!data || data.length === 0) {
+    if (walletDebited) {
+      const { error: rollbackError } = await supabase.rpc('credit_wallet_balance', {
+        p_amount: walletUsed,
+        p_reference_id: `ROLLBACK_${paymentId}`,
+      });
+      if (rollbackError) {
+        console.error('Wallet rollback failed after empty insert response:', rollbackError);
+      }
+    }
+
     throw new Error('No order rows were created');
   }
 

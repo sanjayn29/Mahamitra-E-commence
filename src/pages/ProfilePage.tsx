@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, Mail, Phone, MapPin, ShoppingBag, Heart, LogOut, Package, Edit2, Check, X } from 'lucide-react';
+import { User, Mail, Phone, MapPin, ShoppingBag, Heart, LogOut, Package, Edit2, Check, X, Wallet } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -360,7 +360,7 @@ const ProfilePage = () => {
           {/* Quick Links */}
           <Card>
             <CardContent className="pt-6">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 <Link to="/orders" className="block">
                   <Button variant="outline" className="w-full gap-2 h-12">
                     <ShoppingBag size={18} /> My Orders
@@ -374,6 +374,11 @@ const ProfilePage = () => {
                 <Link to="/shop" className="block">
                   <Button variant="outline" className="w-full gap-2 h-12">
                     <Package size={18} /> Shop Now
+                  </Button>
+                </Link>
+                <Link to="/wallet/topup" className="block">
+                  <Button variant="outline" className="w-full gap-2 h-12">
+                    <Wallet size={18} /> Add Wallet
                   </Button>
                 </Link>
                 <Link to="/contact" className="block">

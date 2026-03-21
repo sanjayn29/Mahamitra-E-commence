@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useSearchParams, useNavigate } from 'react-router-dom';
-import { Menu, X, User, Heart, Search, LogOut, Package, ShoppingCart } from 'lucide-react';
+import { Menu, X, User, Heart, Search, LogOut, Package, ShoppingCart, Wallet } from 'lucide-react';
 import logoImg from '@/assert/logo.png';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
@@ -234,6 +234,12 @@ const Header = () => {
                     <DropdownMenuItem asChild>
                       <Link to="/orders" className="cursor-pointer">
                         My Orders
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/wallet/topup" className="cursor-pointer">
+                        <Wallet size={16} className="mr-2" />
+                        Wallet Top-up
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />

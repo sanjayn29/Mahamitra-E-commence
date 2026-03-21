@@ -17,6 +17,7 @@ import LoginPage from "./pages/LoginPage";
 import AccountPage from "./pages/AccountPage";
 import SignupPage from "./pages/SignupPage";
 import ProfilePage from "./pages/ProfilePage";
+import WalletTopupPage from "./pages/WalletTopupPage";
 import FavoritesPage from "./pages/FavoritesPage";
 import OrdersPage from "./pages/OrdersPage";
 import OrderSuccessPage from "./pages/OrderSuccessPage";
@@ -54,6 +55,7 @@ const App = () => (
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/signup" element={<SignupPage />} />
                   <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/wallet/topup" element={<WalletTopupPage />} />
                   <Route path="/account" element={<AccountPage />} />
                   <Route path="/favorites" element={<FavoritesPage />} />
                   <Route path="/orders" element={<OrdersPage />} />
