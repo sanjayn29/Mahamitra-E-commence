@@ -26,9 +26,43 @@ export interface ChatMessage {
 
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
   women: ['women', 'woman', 'ladies'],
-  girls: ['girls', 'girl', 'kids', 'kid'],
+  girls: ['girls', 'girl'],
   babies: ['babies', 'baby', 'infant', 'newborn'],
 };
+
+const GENERIC_CHILD_WEAR_KEYWORDS = [
+  'child',
+  'children',
+  'kid',
+  'kids',
+  'kidswear',
+  'kids wear',
+  'childwear',
+  'child wear',
+  'childrenwear',
+  'children wear',
+  'kids clothes',
+];
+
+const BABY_WEAR_KEYWORDS = [
+  'baby',
+  'babies',
+  'infant',
+  'newborn',
+  'baby wear',
+  'babywear',
+  'baby clothes',
+  'infant wear',
+  'newborn wear',
+];
+
+const ADULT_LABEL_KEYWORDS = [
+  'women',
+  'woman',
+  'ladies',
+  'lady',
+  'womens',
+];
 
 const AUDIENCE_VALUES = ['women', 'girls', 'babies'] as const;
 
@@ -61,6 +95,62 @@ const PRODUCT_TYPE_ALIAS_TO_CANONICAL: Record<string, string> = Object.entries(P
 );
 
 const normalizeText = (value: string): string => value.toLowerCase().replace(/[^a-z0-9\s-]/g, ' ').replace(/\s+/g, ' ').trim();
+
+const messageHasAnyKeyword = (message: string, keywords: string[]): boolean => {
+  const normalizedMessage = normalizeText(message);
+  return keywords.some((keyword) => {
+    const normalizedKeyword = normalizeText(keyword);
+    return matchesWord(normalizedMessage, normalizedKeyword) || normalizedMessage.includes(normalizedKeyword);
+  });
+};
+
+const hasBabyIntent = (message: string): boolean => messageHasAnyKeyword(message, BABY_WEAR_KEYWORDS);
+
+const hasGirlsIntent = (message: string): boolean => messageHasAnyKeyword(message, CATEGORY_KEYWORDS.girls);
+
+const hasGenericChildIntent = (message: string): boolean => messageHasAnyKeyword(message, GENERIC_CHILD_WEAR_KEYWORDS);
+
+const hasChildWearIntent = (message: string): boolean => {
+  return hasGenericChildIntent(message) || hasBabyIntent(message) || hasGirlsIntent(message);
+};
+
+const isStrictChildOnlyIntent = (message: string): boolean => {
+  const normalizedMessage = normalizeText(message);
+  return /\bonly\s+(child|children|kid|kids|baby|babies)\b/i.test(normalizedMessage)
+    || /\b(child|children|kid|kids|baby|babies)\s+only\b/i.test(normalizedMessage);
+};
+
+const hasAdultLabel = (product: EnhancedProduct): boolean => {
+  const searchable = normalizeText(`${product.name} ${product.subcategory} ${product.material}`);
+  return ADULT_LABEL_KEYWORDS.some((keyword) => matchesWord(searchable, normalizeText(keyword)));
+};
+
+const getExplicitAudiencesFromMessage = (message: string): AIFilters['audience'][] => {
+  const normalizedMessage = normalizeText(message);
+  const audiences = new Set<AIFilters['audience']>();
+
+  if (hasBabyIntent(message)) {
+    audiences.add('babies');
+  }
+
+  if (hasGirlsIntent(message)) {
+    audiences.add('girls');
+  }
+
+  // Generic child intent means kids collection broadly, but only when no specific sub-audience was detected.
+  if (hasGenericChildIntent(message) && audiences.size === 0) {
+    audiences.add('girls');
+    audiences.add('babies');
+  }
+
+  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    if (keywords.some((keyword) => matchesWord(normalizedMessage, normalizeText(keyword)))) {
+      audiences.add(category as AIFilters['audience']);
+    }
+  }
+
+  return Array.from(audiences);
+};
 
 const normalizeProductType = (value?: string): string | undefined => {
   if (!value) return undefined;
@@ -215,6 +305,10 @@ export const getProductsFromAI = async (
     ...filters,
   };
 
+  const explicitAudiences = getExplicitAudiencesFromMessage(userMessage);
+  const childIntent = hasChildWearIntent(userMessage);
+  const strictChildOnly = isStrictChildOnlyIntent(userMessage);
+
   // 2. Fetch all products
   const allProducts = await fetchAllProducts();
 
@@ -232,7 +326,9 @@ export const getProductsFromAI = async (
   // 3. Apply filters
   let filtered = [...allProducts];
 
-  if (filters.audience) {
+  if (explicitAudiences.length > 0) {
+    filtered = filtered.filter((p) => explicitAudiences.includes(p.category.toLowerCase() as AIFilters['audience']));
+  } else if (filters.audience) {
     const audience = filters.audience.toLowerCase();
     filtered = filtered.filter((p) => p.category.toLowerCase() === audience);
   }
@@ -255,6 +351,11 @@ export const getProductsFromAI = async (
     );
   }
 
+  // For child-intent queries, hide items that are labeled as adult products in title/metadata.
+  if (childIntent || strictChildOnly) {
+    filtered = filtered.filter((p) => !hasAdultLabel(p));
+  }
+
   if (filters.sort === 'rating') {
     // Sort by newest as a proxy (rating data not stored)
     filtered.sort((a, b) => {
@@ -266,7 +367,8 @@ export const getProductsFromAI = async (
 
   // 4. Build a human-friendly summary
   const parts: string[] = [];
-  if (filters.audience) parts.push(`audience: **${filters.audience}**`);
+  const customerSegment = explicitAudiences.length > 0 ? explicitAudiences.join(', ') : filters.audience;
+  if (customerSegment) parts.push(`customer: **${customerSegment}**`);
   if (filters.product_type) parts.push(`product type: **${filters.product_type}**`);
   if (filters.color) parts.push(`color: **${filters.color}**`);
   if (filters.price) parts.push(`price under **₹${filters.price.toLocaleString()}**`);

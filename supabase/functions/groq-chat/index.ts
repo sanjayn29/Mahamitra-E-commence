@@ -192,7 +192,7 @@ JSON schema:
 Critical rules:
 1) If the user asks a specific product type (example: saree), set product_type exactly and DO NOT generalize.
 2) Never convert product_type into audience. "green saree" means product_type="saree", not "women".
-3) Use audience only when explicitly asked (women/girls/babies).
+3) Use  only when explicitly asked (women/girls/babies).
 4) If price is not mentioned, use null.
 5) If color is not mentioned, use null.
 6) For "top rated", set sort="rating".
