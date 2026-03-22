@@ -47,7 +47,7 @@ Mahamitra is a premium e-commerce platform dedicated to exquisite women's textil
    npm run dev
    ```
 
-## Developments
+## Development
 
 The project uses a structured architecture:
 - `src/components`: Reusable UI components.
