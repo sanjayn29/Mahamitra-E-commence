@@ -7,6 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Table,
   TableBody,
   TableCell,
@@ -27,12 +34,17 @@ import {
 } from '@/components/ui/alert-dialog';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
+import { CouponDiscountType, formatCouponOffer } from '@/services/couponService';
 
 interface Coupon {
   id: string;
   code: string;
-  discount_amount: number;
+  discount_type: CouponDiscountType;
+  discount_value: number;
+  min_order_value: number;
+  max_discount: number | null;
   is_active: boolean;
+  expires_at?: string | null;
   created_at: string;
 }
 
@@ -41,7 +53,10 @@ const DiscountCoupons = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [code, setCode] = useState('');
-  const [discountAmount, setDiscountAmount] = useState('');
+  const [discountType, setDiscountType] = useState<CouponDiscountType>('flat');
+  const [discountValue, setDiscountValue] = useState('');
+  const [minOrderValue, setMinOrderValue] = useState('0');
+  const [maxDiscount, setMaxDiscount] = useState('');
 
   useEffect(() => {
     fetchCoupons();
@@ -51,7 +66,7 @@ const DiscountCoupons = () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('discount_coupons')
+        .from('coupons')
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -69,22 +84,46 @@ const DiscountCoupons = () => {
     e.preventDefault();
 
     const trimmedCode = code.trim().toUpperCase();
-    const amount = parseFloat(discountAmount);
+    const parsedDiscountValue = parseFloat(discountValue);
+    const parsedMinOrderValue = parseFloat(minOrderValue);
+    const parsedMaxDiscount = maxDiscount.trim() ? parseFloat(maxDiscount) : null;
 
     if (!trimmedCode) {
       toast.error('Please enter a coupon code');
       return;
     }
-    if (isNaN(amount) || amount <= 0) {
-      toast.error('Please enter a valid discount amount');
+    if (isNaN(parsedDiscountValue) || parsedDiscountValue <= 0) {
+      toast.error('Please enter a valid discount value');
+      return;
+    }
+
+    if (isNaN(parsedMinOrderValue) || parsedMinOrderValue < 0) {
+      toast.error('Please enter a valid minimum order value');
+      return;
+    }
+
+    if (discountType === 'percentage' && parsedDiscountValue > 100) {
+      toast.error('Percentage discount cannot exceed 100');
+      return;
+    }
+
+    if (discountType === 'percentage' && parsedMaxDiscount !== null && (isNaN(parsedMaxDiscount) || parsedMaxDiscount <= 0)) {
+      toast.error('Please enter a valid max discount cap');
       return;
     }
 
     try {
       setSaving(true);
       const { data, error } = await supabase
-        .from('discount_coupons')
-        .insert([{ code: trimmedCode, discount_amount: amount }])
+        .from('coupons')
+        .insert([{
+          code: trimmedCode,
+          discount_type: discountType,
+          discount_value: parsedDiscountValue,
+          min_order_value: parsedMinOrderValue,
+          max_discount: discountType === 'percentage' ? parsedMaxDiscount : null,
+          is_active: true,
+        }])
         .select()
         .single();
 
@@ -99,7 +138,10 @@ const DiscountCoupons = () => {
 
       setCoupons((prev) => [data, ...prev]);
       setCode('');
-      setDiscountAmount('');
+      setDiscountType('flat');
+      setDiscountValue('');
+      setMinOrderValue('0');
+      setMaxDiscount('');
       toast.success(`Coupon "${trimmedCode}" created successfully!`);
     } catch (error) {
       console.error('Error adding coupon:', error);
@@ -112,7 +154,7 @@ const DiscountCoupons = () => {
   const handleToggle = async (coupon: Coupon) => {
     try {
       const { error } = await supabase
-        .from('discount_coupons')
+        .from('coupons')
         .update({ is_active: !coupon.is_active, updated_at: new Date().toISOString() })
         .eq('id', coupon.id);
 
@@ -131,7 +173,7 @@ const DiscountCoupons = () => {
   const handleDelete = async (coupon: Coupon) => {
     try {
       const { error } = await supabase
-        .from('discount_coupons')
+        .from('coupons')
         .delete()
         .eq('id', coupon.id);
 
@@ -182,8 +224,8 @@ const DiscountCoupons = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleAddCoupon} className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1 space-y-1.5">
+            <form onSubmit={handleAddCoupon} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+              <div className="space-y-1.5">
                 <Label htmlFor="code">Coupon Code</Label>
                 <Input
                   id="code"
@@ -194,20 +236,58 @@ const DiscountCoupons = () => {
                   maxLength={30}
                 />
               </div>
-              <div className="flex-1 space-y-1.5">
-                <Label htmlFor="discount">Discount Amount (₹)</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="discountType">Discount Type</Label>
+                <Select value={discountType} onValueChange={(value) => setDiscountType(value as CouponDiscountType)}>
+                  <SelectTrigger id="discountType">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="flat">Flat</SelectItem>
+                    <SelectItem value="percentage">Percentage</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="discount">Discount Value {discountType === 'flat' ? '(₹)' : '(%)'}</Label>
                 <Input
                   id="discount"
                   type="number"
-                  placeholder="e.g. 200"
-                  value={discountAmount}
-                  onChange={(e) => setDiscountAmount(e.target.value)}
+                  placeholder={discountType === 'flat' ? 'e.g. 200' : 'e.g. 10'}
+                  value={discountValue}
+                  onChange={(e) => setDiscountValue(e.target.value)}
                   min="1"
                   step="1"
                 />
               </div>
-              <div className="flex items-end">
-                <Button type="submit" disabled={saving} className="w-full sm:w-auto gap-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="minOrderValue">Minimum Order Value (₹)</Label>
+                <Input
+                  id="minOrderValue"
+                  type="number"
+                  placeholder="e.g. 1999"
+                  value={minOrderValue}
+                  onChange={(e) => setMinOrderValue(e.target.value)}
+                  min="0"
+                  step="1"
+                />
+              </div>
+              {discountType === 'percentage' && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="maxDiscount">Max Discount Cap (₹)</Label>
+                  <Input
+                    id="maxDiscount"
+                    type="number"
+                    placeholder="e.g. 500"
+                    value={maxDiscount}
+                    onChange={(e) => setMaxDiscount(e.target.value)}
+                    min="1"
+                    step="1"
+                  />
+                </div>
+              )}
+              <div className="flex items-end xl:col-span-1">
+                <Button type="submit" disabled={saving} className="w-full gap-2">
                   <Plus size={18} />
                   {saving ? 'Adding...' : 'Add Coupon'}
                 </Button>
@@ -244,6 +324,7 @@ const DiscountCoupons = () => {
                     <TableRow>
                       <TableHead>Code</TableHead>
                       <TableHead>Discount</TableHead>
+                      <TableHead>Min Order</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Created</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -256,7 +337,10 @@ const DiscountCoupons = () => {
                           {coupon.code}
                         </TableCell>
                         <TableCell className="font-semibold text-base">
-                          ₹{coupon.discount_amount.toFixed(0)}
+                          {formatCouponOffer(coupon)}
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          ₹{coupon.min_order_value.toFixed(0)}
                         </TableCell>
                         <TableCell>
                           <Badge

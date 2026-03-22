@@ -18,7 +18,6 @@ import {
   Zap,
   Gift,
   Crown,
-  BadgePercent,
 } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
 import ProductCard from '@/components/ProductCard';
@@ -31,6 +30,7 @@ import {
   getCategoriesWithCounts,
   EnhancedProduct,
 } from '@/services/productService';
+import CouponCarousel from '@/components/coupons/CouponCarousel';
 
 /* ─── Animated Counter Widget ─── */
 const AnimatedCounter = ({ end, label, suffix = '' }: { end: number; label: string; suffix?: string }) => {
@@ -460,42 +460,8 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* ══════════════ PROMO BANNER ══════════════ */}
-      <section className="py-0">
-        <div className="relative overflow-hidden bg-gradient-to-r from-primary via-secondary to-primary">
-          <div className="absolute inset-0 opacity-10"
-            style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '30px 30px' }}
-          />
-          <div className="container mx-auto px-4 py-12 md:py-16 relative z-10">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-              <div className="text-center md:text-left">
-                <div className="flex items-center gap-2 justify-center md:justify-start mb-3">
-                  <BadgePercent size={20} className="text-yellow-300" />
-                  <span className="text-yellow-300 font-sans text-sm font-semibold uppercase tracking-wider">
-                    Limited Time Offer
-                  </span>
-                </div>
-                <h2 className="font-serif text-3xl md:text-4xl font-bold text-white mb-3">
-                  Flat ₹200 Off on First Order
-                </h2>
-                <p className="text-white/80 font-sans max-w-md">
-                  Use code{' '}
-                  <span className="inline-block bg-white/20 backdrop-blur-sm px-3 py-1 rounded-md font-bold text-white">
-                    MAHAMITRA20
-                  </span>{' '}
-                  at checkout. Valid on orders above ₹1,999.
-                </p>
-              </div>
-              <Button asChild size="lg" className="bg-white text-primary hover:bg-white/90 font-sans shadow-xl px-10 text-base">
-                <Link to="/shop">
-                  <Gift size={18} className="mr-2" />
-                  Claim Offer
-                </Link>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* ══════════════ LIVE COUPON CAROUSEL ══════════════ */}
+      <CouponCarousel />
 
       {/* ══════════════ NEW ARRIVALS (scrollable) ══════════════ */}
       <section className="py-16 bg-muted/50">

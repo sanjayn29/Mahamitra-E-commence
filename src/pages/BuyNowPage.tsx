@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { Loader2, ShoppingBag, ArrowLeft, Tag, X, Wallet } from 'lucide-react';
+import { Loader2, ShoppingBag, ArrowLeft, Wallet } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,9 @@ import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import SEO from '@/components/SEO';
+import CouponInput from '@/components/coupons/CouponInput';
+import CouponEligibilityRibbon from '@/components/coupons/CouponEligibilityRibbon';
+import { AppliedCoupon, evaluateCouponForTotal, getBestEligibleCoupon } from '@/services/couponService';
 
 const BuyNowPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -37,9 +40,8 @@ const BuyNowPage = () => {
   const requestedQuantity = Math.max(1, parseInt(searchParams.get('quantity') || '1', 10) || 1);
 
   // Coupon state
-  const [couponCode, setCouponCode] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount_amount: number } | null>(null);
-  const [couponLoading, setCouponLoading] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
+  const [bestCouponSuggestion, setBestCouponSuggestion] = useState<AppliedCoupon | null>(null);
   const [walletBalance, setWalletBalance] = useState(0);
   const [useWallet, setUseWallet] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
@@ -182,49 +184,61 @@ const BuyNowPage = () => {
     ? cartState.items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0)
     : (product ? (selectedVariant?.price_override ?? product.price) * formData.quantity : 0);
 
-  const discount = appliedCoupon ? Math.min(appliedCoupon.discount_amount, subtotal) : 0;
+  const discount = appliedCoupon?.discountAmount || 0;
   const total = subtotal - discount;
   const walletUsed = useWallet ? Math.min(walletBalance, total) : 0;
   const payableAmount = Math.max(0, total - walletUsed);
 
-  const handleApplyCoupon = async () => {
-    const trimmed = couponCode.trim().toUpperCase();
-    if (!trimmed) {
-      toast.error('Please enter a coupon code');
+  useEffect(() => {
+    const refreshBestCouponSuggestion = async () => {
+      if (subtotal <= 0) {
+        setBestCouponSuggestion(null);
+        return;
+      }
+
+      try {
+        const suggestion = await getBestEligibleCoupon(subtotal);
+        setBestCouponSuggestion(suggestion);
+      } catch (error) {
+        console.error('Error fetching best eligible coupon:', error);
+        setBestCouponSuggestion(null);
+      }
+    };
+
+    refreshBestCouponSuggestion();
+  }, [subtotal]);
+
+  useEffect(() => {
+    if (!appliedCoupon) {
       return;
     }
 
-    try {
-      setCouponLoading(true);
-      const { data, error } = await supabase
-        .from('discount_coupons')
-        .select('code, discount_amount, is_active')
-        .eq('code', trimmed)
-        .single();
-
-      if (error || !data) {
-        toast.error('Invalid coupon code');
-        return;
-      }
-
-      if (!data.is_active) {
-        toast.error('This coupon is no longer active');
-        return;
-      }
-
-      setAppliedCoupon({ code: data.code, discount_amount: data.discount_amount });
-      toast.success(`Coupon "${data.code}" applied! You save ₹${Math.min(data.discount_amount, subtotal).toLocaleString()}`);
-    } catch (error) {
-      console.error('Error validating coupon:', error);
-      toast.error('Failed to validate coupon');
-    } finally {
-      setCouponLoading(false);
+    const evaluation = evaluateCouponForTotal(appliedCoupon.coupon, subtotal);
+    if (!evaluation.applicable) {
+      setAppliedCoupon(null);
+      toast.info('Applied coupon was removed because your order total no longer meets eligibility rules.');
+      return;
     }
+
+    if (evaluation.discountAmount !== appliedCoupon.discountAmount) {
+      setAppliedCoupon({
+        coupon: appliedCoupon.coupon,
+        discountAmount: evaluation.discountAmount,
+      });
+    }
+  }, [appliedCoupon, subtotal]);
+
+  const handleApplySuggestedCoupon = () => {
+    if (!bestCouponSuggestion) {
+      return;
+    }
+
+    setAppliedCoupon(bestCouponSuggestion);
+    toast.success(`Coupon ${bestCouponSuggestion.coupon.code} applied`);
   };
 
   const handleRemoveCoupon = () => {
     setAppliedCoupon(null);
-    setCouponCode('');
     toast.info('Coupon removed');
   };
 
@@ -507,43 +521,16 @@ const BuyNowPage = () => {
                   <Separator />
 
                   {/* Discount Code */}
-                  <div>
-                    <Label>Discount Coupon (Optional)</Label>
-                    {appliedCoupon ? (
-                      <div className="flex items-center gap-2 mt-2 p-3 bg-green-50 border border-green-200 rounded-md">
-                        <Tag size={18} className="text-green-600" />
-                        <span className="font-mono font-semibold text-green-700">{appliedCoupon.code}</span>
-                        <span className="text-sm text-green-600 ml-auto">-₹{Math.min(appliedCoupon.discount_amount, subtotal).toLocaleString()}</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                          onClick={handleRemoveCoupon}
-                        >
-                          <X size={16} />
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="flex gap-2 mt-2">
-                        <Input
-                          placeholder="Enter coupon code"
-                          value={couponCode}
-                          onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                          className="uppercase"
-                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleApplyCoupon(); } }}
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={handleApplyCoupon}
-                          disabled={couponLoading || !couponCode.trim()}
-                        >
-                          {couponLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
-                        </Button>
-                      </div>
-                    )}
-                  </div>
+                  {bestCouponSuggestion && (!appliedCoupon || appliedCoupon.coupon.code !== bestCouponSuggestion.coupon.code) && (
+                    <CouponEligibilityRibbon suggestion={bestCouponSuggestion} onApply={handleApplySuggestedCoupon} />
+                  )}
+
+                  <CouponInput
+                    subtotal={subtotal}
+                    appliedCoupon={appliedCoupon}
+                    onApply={setAppliedCoupon}
+                    onRemove={handleRemoveCoupon}
+                  />
 
                   {/* Submit Button */}
                   <Button
