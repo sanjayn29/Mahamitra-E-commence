@@ -76,11 +76,27 @@ const COLOR_ALIASES: Record<string, string> = {
   offwhite: "off white",
   "off-white": "off white",
 };
+const STRICT_PHRASES = [
+  "exact",
+  "exactly",
+  "only",
+  "strict",
+  "must match",
+  "no other",
+  "same only",
+];
 
 const safeString = (value: unknown): string => {
   if (typeof value !== "string") return "";
   return value.trim().toLowerCase();
 };
+
+const detectStrictFromMessage = (value: unknown): boolean => {
+  const text = safeString(value);
+  if (!text) return false;
+  return STRICT_PHRASES.some((phrase) => text.includes(phrase));
+};
+
 
 const normalizeProductType = (value: unknown): string | null => {
   const raw = safeString(value).replace(/\s+/g, " ");
@@ -124,7 +140,7 @@ const extractJsonObject = (raw: string): Record<string, unknown> | null => {
   }
 };
 
-const sanitizeFilters = (raw: Record<string, unknown>) => {
+const sanitizeFilters = (raw: Record<string, unknown>, userMessage: string) => {
   // Backward compatibility: old prompt may return category instead of audience/product_type
   const categoryValue = safeString(raw.category);
   const audience =
@@ -139,9 +155,15 @@ const sanitizeFilters = (raw: Record<string, unknown>) => {
       : null);
 
   const numericPrice = Number(raw.price);
-  const price = Number.isFinite(numericPrice) && numericPrice > 0 ? Math.round(numericPrice) : null;
+  const price =
+    Number.isFinite(numericPrice) && numericPrice > 0
+      ? Math.round(numericPrice)
+      : null;
 
-  const strict = raw.strict !== false;
+  // Broad by default. Strict only when explicitly requested.
+  const modelStrict = typeof raw.strict === "boolean" ? raw.strict : null;
+  const strict =
+    modelStrict !== null ? modelStrict : detectStrictFromMessage(userMessage);
 
   return {
     price,
@@ -173,7 +195,8 @@ serve(async (req) => {
       );
     }
 
-    const prompt = `
+
+const prompt = `
 You are a strict filter extractor for Mahamitra ecommerce.
 
 Goal:
@@ -186,18 +209,20 @@ JSON schema:
   "audience": "women" | "girls" | "babies" | null,
   "product_type": "saree" | "kurti" | "frock" | "dress" | "lehenga" | "gown" | "blouse" | "top" | "skirt" | "salwar" | "suit" | "dupatta" | "co-ord" | "nighty" | "jumpsuit" | null,
   "sort": "rating" | "orders_count" | null,
-  "strict": true
+  "strict": boolean
 }
 
 Critical rules:
 1) If the user asks a specific product type (example: saree), set product_type exactly and DO NOT generalize.
 2) Never convert product_type into audience. "green saree" means product_type="saree", not "women".
-3) Use  only when explicitly asked (women/girls/babies).
+3) Use audience only when explicitly asked (women/girls/babies).
 4) If price is not mentioned, use null.
 5) If color is not mentioned, use null.
 6) For "top rated", set sort="rating".
 7) For "popular", "most ordered", "best seller", set sort="orders_count".
-8) Output only JSON. No markdown. No explanations.
+8) strict=false by default.
+9) strict=true only if user explicitly asks exact/only/strict matching.
+10) Output only JSON. No markdown. No explanations.
 
 User message:
 "${message}"
@@ -247,7 +272,8 @@ User message:
       );
     }
 
-    const sanitized = sanitizeFilters(parsed);
+const sanitized = sanitizeFilters(parsed, message);
+
 
     return new Response(JSON.stringify(sanitized), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -31,6 +31,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
+import CancellationReasonDialog from '@/components/orders/CancellationReasonDialog';
 
 interface Order {
   id: string;
@@ -52,14 +53,28 @@ interface Order {
   payment_id: string | null;
   payment_status: 'pending' | 'completed' | 'failed' | 'refunded';
   order_status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  cancellation_reason: string | null;
+  cancelled_by: 'customer' | 'admin' | null;
+  cancelled_at: string | null;
   created_at: string;
   updated_at: string;
 }
+
+const ADMIN_CANCELLATION_REASONS = [
+  'Stock damaged',
+  'Out of stock',
+  'Unable to fulfill order',
+  'Payment issue',
+  'Other',
+];
 
 const Orders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [orderToCancel, setOrderToCancel] = useState<Order | null>(null);
+  const [submittingCancel, setSubmittingCancel] = useState(false);
   const { user } = useAuth();
 
   // Fetch all orders
@@ -94,6 +109,22 @@ const Orders = () => {
 
   // Update order status
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    const targetOrder = orders.find((order) => order.id === orderId);
+    if (!targetOrder) {
+      return;
+    }
+
+    if (newStatus === 'cancelled') {
+      setOrderToCancel(targetOrder);
+      setCancelModalOpen(true);
+      return;
+    }
+
+    if (targetOrder.order_status === 'cancelled') {
+      toast.error('Cancelled orders cannot be changed.');
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('orders')
@@ -109,6 +140,43 @@ const Orders = () => {
     } catch (error: any) {
       console.error('Error updating order status:', error);
       toast.error(error?.message || 'Failed to update order status');
+    }
+  };
+
+  const handleAdminCancellationSubmit = async (reason: string) => {
+    if (!orderToCancel) {
+      return;
+    }
+
+    try {
+      setSubmittingCancel(true);
+
+      const { data, error } = await supabase.rpc('cancel_order_and_credit_wallet', {
+        p_order_id: orderToCancel.id,
+        p_cancelled_by: 'admin',
+        p_cancellation_reason: reason,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      const result = Array.isArray(data) ? data[0] : data;
+      const credited = Number(result?.wallet_credited || 0);
+      if (credited > 0) {
+        toast.success(`Order cancelled and ₹${credited.toLocaleString()} credited to customer wallet.`);
+      } else {
+        toast.success('Order cancelled successfully.');
+      }
+
+      setCancelModalOpen(false);
+      setOrderToCancel(null);
+      await fetchOrders();
+    } catch (error: any) {
+      console.error('Error cancelling order as admin:', error);
+      toast.error(error?.message || 'Failed to cancel order');
+    } finally {
+      setSubmittingCancel(false);
     }
   };
 
@@ -224,6 +292,8 @@ const Orders = () => {
                       <TableHead>Amount</TableHead>
                       <TableHead>Payment</TableHead>
                       <TableHead>Order Status</TableHead>
+                      <TableHead>Cancelled By / Reason</TableHead>
+                      <TableHead>Refund Status</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
@@ -276,6 +346,7 @@ const Orders = () => {
                           <Select
                             value={order.order_status}
                             onValueChange={(value) => updateOrderStatus(order.id, value)}
+                            disabled={order.order_status === 'cancelled'}
                           >
                             <SelectTrigger className="w-[130px]">
                               <SelectValue />
@@ -286,9 +357,34 @@ const Orders = () => {
                               <SelectItem value="processing">Processing</SelectItem>
                               <SelectItem value="shipped">Shipped</SelectItem>
                               <SelectItem value="delivered">Delivered</SelectItem>
-                              <SelectItem value="cancelled">Cancelled</SelectItem>
+                              <SelectItem value="cancelled" disabled={['shipped', 'delivered'].includes(order.order_status)}>
+                                Cancelled
+                              </SelectItem>
                             </SelectContent>
                           </Select>
+                        </TableCell>
+
+                        <TableCell className="max-w-[240px]">
+                          {order.order_status === 'cancelled' ? (
+                            <div className="space-y-1 text-xs">
+                              <p className="font-medium capitalize">{order.cancelled_by || 'customer'}</p>
+                              <p className="text-muted-foreground truncate" title={order.cancellation_reason || ''}>
+                                {order.cancellation_reason || 'N/A'}
+                              </p>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+
+                        <TableCell>
+                          {order.order_status === 'cancelled' ? (
+                            <Badge variant={order.payment_status === 'refunded' ? 'default' : 'outline'}>
+                              {order.payment_status === 'refunded' ? 'Refunded' : 'No refund'}
+                            </Badge>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
                         </TableCell>
 
                         <TableCell className="text-sm">
@@ -370,6 +466,35 @@ const Orders = () => {
 
                                 <Separator />
 
+                                {order.order_status === 'cancelled' && (
+                                  <>
+                                    <div>
+                                      <h3 className="font-semibold mb-3 text-destructive">Cancellation Details</h3>
+                                      <div className="space-y-2 text-sm">
+                                        <p className="flex items-center gap-2">
+                                          <span className="font-medium w-32">Cancelled By:</span>
+                                          <span className="capitalize">{order.cancelled_by || 'customer'}</span>
+                                        </p>
+                                        <p className="flex items-start gap-2">
+                                          <span className="font-medium w-32">Reason:</span>
+                                          <span>{order.cancellation_reason || 'N/A'}</span>
+                                        </p>
+                                        {order.cancelled_at && (
+                                          <p className="flex items-center gap-2">
+                                            <span className="font-medium w-32">Cancelled At:</span>
+                                            <span>{formatDate(order.cancelled_at)}</span>
+                                          </p>
+                                        )}
+                                        <p className="flex items-center gap-2">
+                                          <span className="font-medium w-32">Refund Status:</span>
+                                          <span>{order.payment_status === 'refunded' ? 'Refunded to wallet' : 'No refund required'}</span>
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <Separator />
+                                  </>
+                                )}
+
                                 {/* Payment & Order Info */}
                                 <div>
                                   <h3 className="font-semibold mb-3">Payment & Order Status</h3>
@@ -417,6 +542,18 @@ const Orders = () => {
           </CardContent>
         </Card>
       </main>
+
+      <CancellationReasonDialog
+        open={cancelModalOpen}
+        onOpenChange={setCancelModalOpen}
+        title="Cancel Order as Admin"
+        description="Select a cancellation reason. A customer wallet refund will be processed once for paid orders."
+        reasons={ADMIN_CANCELLATION_REASONS}
+        alwaysShowCustomField
+        customLabel="Additional explanation"
+        isSubmitting={submittingCancel}
+        onSubmit={handleAdminCancellationSubmit}
+      />
     </div>
   );
 };

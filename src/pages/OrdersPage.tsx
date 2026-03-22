@@ -11,6 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { generateReceipt } from '@/services/pdfReceiptService';
 import SEO from '@/components/SEO';
+import CancellationReasonDialog from '@/components/orders/CancellationReasonDialog';
 
 interface Order {
   id: string;
@@ -25,6 +26,9 @@ interface Order {
   payment_id: string | null;
   payment_status: string;
   order_status: string;
+  cancellation_reason: string | null;
+  cancelled_by: 'customer' | 'admin' | null;
+  cancelled_at: string | null;
   created_at: string;
   customer_name: string;
   customer_email: string;
@@ -33,6 +37,14 @@ interface Order {
   city: string;
   pincode: string;
 }
+
+const CUSTOMER_CANCELLATION_REASONS = [
+  'Wrongfully placed order',
+  'Found better price elsewhere',
+  'Ordered by mistake',
+  'Delivery time too long',
+  'Other',
+];
 
 const statusConfig: Record<string, { icon: React.ElementType; color: string; label: string }> = {
   pending: { icon: Clock, color: 'bg-yellow-100 text-yellow-800', label: 'Pending' },
@@ -47,6 +59,8 @@ const OrdersPage = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [orderToCancel, setOrderToCancel] = useState<Order | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -93,22 +107,30 @@ const OrdersPage = () => {
 
   const canCancelOrder = (status: string) => ['pending', 'confirmed', 'processing'].includes(status);
 
-  const handleCancelOrder = async (order: Order) => {
+  const openCancelOrderModal = (order: Order) => {
     if (!canCancelOrder(order.order_status)) {
       toast.error('This order can no longer be cancelled.');
       return;
     }
 
-    const confirmed = window.confirm('Cancel this order? If payment is completed, refund will be credited to your wallet.');
-    if (!confirmed) {
+    setOrderToCancel(order);
+    setCancelModalOpen(true);
+  };
+
+  const handleCancelOrder = async (reason: string) => {
+    if (!orderToCancel) {
       return;
     }
 
     try {
-      setCancellingOrderId(order.id);
+      setCancellingOrderId(orderToCancel.id);
 
       const { data, error } = await supabase
-        .rpc('cancel_order_and_credit_wallet', { p_order_id: order.id });
+        .rpc('cancel_order_and_credit_wallet', {
+          p_order_id: orderToCancel.id,
+          p_cancelled_by: 'customer',
+          p_cancellation_reason: reason,
+        });
 
       if (error) {
         throw error;
@@ -116,14 +138,16 @@ const OrdersPage = () => {
 
       const result = Array.isArray(data) ? data[0] : data;
       const credited = Number(result?.wallet_credited || 0);
-      const walletBalance = Number(result?.wallet_balance || 0);
+      const message = String(result?.message || 'Order cancelled successfully.');
 
       if (credited > 0) {
-        toast.success(`Order cancelled. ₹${credited.toLocaleString()} credited to wallet. Wallet balance: ₹${walletBalance.toLocaleString()}`);
+        toast.success(`₹${credited.toLocaleString()} has been credited to your wallet`);
       } else {
-        toast.success('Order cancelled successfully.');
+        toast.success(message);
       }
 
+      setCancelModalOpen(false);
+      setOrderToCancel(null);
       await fetchOrders();
     } catch (error: any) {
       console.error('Error cancelling order:', error);
@@ -246,17 +270,42 @@ const OrdersPage = () => {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => handleCancelOrder(order)}
+                                  onClick={() => openCancelOrderModal(order)}
                                   disabled={cancellingOrderId === order.id}
                                   className="text-destructive hover:bg-destructive/10"
                                 >
                                   {cancellingOrderId === order.id ? 'Cancelling...' : 'Cancel Order'}
                                 </Button>
                               )}
+                              {!canCancelOrder(order.order_status) && order.order_status === 'cancelled' && (
+                                <Button variant="outline" size="sm" disabled>
+                                  Cancelled
+                                </Button>
+                              )}
                             </div>
                           </div>
                         </div>
                       </div>
+
+                      {order.order_status === 'cancelled' && (
+                        <>
+                          <Separator />
+                          <div className="px-4 py-3 bg-red-50/60 text-sm space-y-1">
+                            <p>
+                              <span className="font-medium">Cancelled by:</span>{' '}
+                              {(order.cancelled_by || 'customer').charAt(0).toUpperCase() + (order.cancelled_by || 'customer').slice(1)}
+                            </p>
+                            <p>
+                              <span className="font-medium">Reason:</span> {order.cancellation_reason || 'N/A'}
+                            </p>
+                            {order.cancelled_at && (
+                              <p>
+                                <span className="font-medium">Date:</span> {formatDate(order.cancelled_at)}
+                              </p>
+                            )}
+                          </div>
+                        </>
+                      )}
 
                       {/* Progress bar */}
                       {order.order_status !== 'cancelled' && (
@@ -275,6 +324,17 @@ const OrdersPage = () => {
           )}
         </div>
       </div>
+
+      <CancellationReasonDialog
+        open={cancelModalOpen}
+        onOpenChange={setCancelModalOpen}
+        title="Cancel Order"
+        description="Please select a reason for cancelling this order. Refund (if eligible) will be credited to your wallet."
+        reasons={CUSTOMER_CANCELLATION_REASONS}
+        otherLabel="Please enter your cancellation reason"
+        isSubmitting={cancellingOrderId === orderToCancel?.id}
+        onSubmit={handleCancelOrder}
+      />
     </MainLayout>
   );
 };

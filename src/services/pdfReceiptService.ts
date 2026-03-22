@@ -19,6 +19,10 @@ interface OrderData {
   city: string;
   pincode: string;
   total_amount: number;
+  order_status?: string;
+  cancellation_reason?: string | null;
+  cancelled_by?: 'customer' | 'admin' | null;
+  cancelled_at?: string | null;
   discount?: number;
 }
 
@@ -42,6 +46,11 @@ const formatReceiptDate = (dateString: string): string => {
 // Helper function to format order ID (display first 8 characters)
 const formatOrderId = (orderId: string): string => {
   return orderId.substring(0, 8).toUpperCase();
+};
+
+const formatCancelledBy = (cancelledBy?: string | null): string => {
+  if (!cancelledBy) return 'Customer';
+  return cancelledBy.charAt(0).toUpperCase() + cancelledBy.slice(1);
 };
 
 // Helper function to load image as base64
@@ -117,12 +126,54 @@ const renderTitle = (doc: jsPDF, y: number): number => {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(18);
   doc.setTextColor(240, 131, 186); // Pink
-  const title = 'PAYMENT RECEIPT';
+  const title = 'ORDER INVOICE';
   const pageWidth = doc.internal.pageSize.getWidth();
   const textWidth = doc.getTextWidth(title);
   doc.text(title, (pageWidth - textWidth) / 2, y);
 
   return y + 10;
+};
+
+const renderCancellationSection = (doc: jsPDF, order: OrderData, y: number): number => {
+  if (order.order_status !== 'cancelled') {
+    return y;
+  }
+
+  const boxX = 20;
+  const boxWidth = 170;
+  const reason = order.cancellation_reason || 'Reason not provided';
+  const reasonLines = doc.splitTextToSize(`Reason: ${reason}`, 155);
+  const lineHeight = 5;
+  const contentLines = 4 + reasonLines.length;
+  const boxHeight = 12 + contentLines * lineHeight;
+
+  doc.setFillColor(254, 242, 242);
+  doc.setDrawColor(220, 38, 38);
+  doc.rect(boxX, y, boxWidth, boxHeight, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(220, 38, 38);
+  doc.text('ORDER CANCELLED', 25, y + 9);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(80, 80, 80);
+  let cursorY = y + 16;
+  doc.text(`Cancelled by: ${formatCancelledBy(order.cancelled_by)}`, 25, cursorY);
+
+  if (order.cancelled_at) {
+    cursorY += lineHeight;
+    doc.text(`Cancelled on: ${formatReceiptDate(order.cancelled_at)}`, 25, cursorY);
+  }
+
+  cursorY += lineHeight;
+  doc.text(reasonLines, 25, cursorY);
+  cursorY += reasonLines.length * lineHeight;
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Amount ${formatCurrency(order.total_amount)} has been transferred to your wallet`, 25, cursorY);
+
+  return y + boxHeight + 5;
 };
 
 // Render order information
@@ -304,8 +355,8 @@ const renderTotals = (doc: jsPDF, order: OrderData, y: number): number => {
   // Total (highlighted)
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
-  doc.setTextColor(240, 131, 186); // Pink
-  doc.text('TOTAL PAID:', 120, y);
+  doc.setTextColor(order.order_status === 'cancelled' ? 220 : 240, order.order_status === 'cancelled' ? 38 : 131, order.order_status === 'cancelled' ? 38 : 186);
+  doc.text(order.order_status === 'cancelled' ? 'TOTAL AMOUNT:' : 'TOTAL PAID:', 120, y);
   const totalText = formatCurrency(order.total_amount);
   const totalWidth = doc.getTextWidth(totalText);
   doc.text(totalText, 190 - totalWidth, y);
@@ -354,6 +405,7 @@ export const generateReceipt = async (orderData: OrderData): Promise<void> => {
     // Render all sections
     y = await renderHeader(doc, y);
     y = renderTitle(doc, y);
+    y = renderCancellationSection(doc, orderData, y);
     y = renderOrderInfo(doc, orderData, y);
     y = renderBillTo(doc, orderData, y);
     y = renderProductDetails(doc, orderData, y);
