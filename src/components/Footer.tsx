@@ -126,7 +126,15 @@ const Footer = () => {
               rel="noopener noreferrer"
               className="text-background/60 hover:text-primary transition-colors"
             >
-              Developed by Sanjay N and team
+              Developed by Sanjay N
+            </a>
+            <a
+              href="https://www.saravana-p.tech"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-background/60 hover:text-primary transition-colors"
+            >
+              Feature updations and Testing by Saravana P
             </a>
           </div>
         </div>

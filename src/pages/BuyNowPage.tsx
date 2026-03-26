@@ -371,6 +371,11 @@ const BuyNowPage = () => {
         state: selectedAddress.state,
         country: selectedAddress.country,
         pincode: selectedAddress.postal_code,
+        // Coupon data for backend validation
+        couponCode: appliedCoupon?.coupon.code || null,
+        couponId: appliedCoupon?.coupon.id || null,
+        couponDiscountAmount: appliedCoupon?.discountAmount || 0,
+        couponType: appliedCoupon?.coupon.coupon_type || null,
         isCartCheckout // Pass flag
       };
 

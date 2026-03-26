@@ -45,6 +45,10 @@ interface Coupon {
   max_discount: number | null;
   is_active: boolean;
   expires_at?: string | null;
+  coupon_type?: string;
+  total_usage_limit?: number | null;
+  used_count?: number;
+  specific_product_id?: string | null;
   created_at: string;
 }
 
@@ -57,6 +61,8 @@ const DiscountCoupons = () => {
   const [discountValue, setDiscountValue] = useState('');
   const [minOrderValue, setMinOrderValue] = useState('0');
   const [maxDiscount, setMaxDiscount] = useState('');
+  const [couponType, setCouponType] = useState('FLAT');
+  const [totalUsageLimit, setTotalUsageLimit] = useState('');
 
   useEffect(() => {
     fetchCoupons();
@@ -67,7 +73,7 @@ const DiscountCoupons = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('coupons')
-        .select('*')
+        .select('id, code, discount_type, discount_value, min_order_value, max_discount, is_active, expires_at, coupon_type, total_usage_limit, used_count, specific_product_id, created_at')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -87,6 +93,7 @@ const DiscountCoupons = () => {
     const parsedDiscountValue = parseFloat(discountValue);
     const parsedMinOrderValue = parseFloat(minOrderValue);
     const parsedMaxDiscount = maxDiscount.trim() ? parseFloat(maxDiscount) : null;
+    const parsedTotalUsageLimit = totalUsageLimit.trim() ? parseInt(totalUsageLimit, 10) : null;
 
     if (!trimmedCode) {
       toast.error('Please enter a coupon code');
@@ -112,6 +119,11 @@ const DiscountCoupons = () => {
       return;
     }
 
+    if (parsedTotalUsageLimit !== null && parsedTotalUsageLimit < 1) {
+      toast.error('Usage limit must be at least 1');
+      return;
+    }
+
     try {
       setSaving(true);
       const { data, error } = await supabase
@@ -123,6 +135,9 @@ const DiscountCoupons = () => {
           min_order_value: parsedMinOrderValue,
           max_discount: discountType === 'percentage' ? parsedMaxDiscount : null,
           is_active: true,
+          coupon_type: couponType,
+          total_usage_limit: parsedTotalUsageLimit,
+          used_count: 0,
         }])
         .select()
         .single();
@@ -142,6 +157,8 @@ const DiscountCoupons = () => {
       setDiscountValue('');
       setMinOrderValue('0');
       setMaxDiscount('');
+      setCouponType('FLAT');
+      setTotalUsageLimit('');
       toast.success(`Coupon "${trimmedCode}" created successfully!`);
     } catch (error) {
       console.error('Error adding coupon:', error);
@@ -224,7 +241,7 @@ const DiscountCoupons = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleAddCoupon} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+            <form onSubmit={handleAddCoupon} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="code">Coupon Code</Label>
                 <Input
@@ -235,6 +252,19 @@ const DiscountCoupons = () => {
                   className="uppercase"
                   maxLength={30}
                 />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="couponType">Coupon Type</Label>
+                <Select value={couponType} onValueChange={setCouponType}>
+                  <SelectTrigger id="couponType">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="FLAT">Flat Amount</SelectItem>
+                    <SelectItem value="PERCENT">Percentage</SelectItem>
+                    <SelectItem value="FIRST_ORDER">First Order Only</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="discountType">Discount Type</Label>
@@ -261,7 +291,7 @@ const DiscountCoupons = () => {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="minOrderValue">Minimum Order Value (₹)</Label>
+                <Label htmlFor="minOrderValue">Min Order (₹)</Label>
                 <Input
                   id="minOrderValue"
                   type="number"
@@ -274,7 +304,7 @@ const DiscountCoupons = () => {
               </div>
               {discountType === 'percentage' && (
                 <div className="space-y-1.5">
-                  <Label htmlFor="maxDiscount">Max Discount Cap (₹)</Label>
+                  <Label htmlFor="maxDiscount">Max Cap (₹)</Label>
                   <Input
                     id="maxDiscount"
                     type="number"
@@ -286,6 +316,18 @@ const DiscountCoupons = () => {
                   />
                 </div>
               )}
+              <div className="space-y-1.5">
+                <Label htmlFor="usageLimit">Usage Limit</Label>
+                <Input
+                  id="usageLimit"
+                  type="number"
+                  placeholder="Leave empty for unlimited"
+                  value={totalUsageLimit}
+                  onChange={(e) => setTotalUsageLimit(e.target.value)}
+                  min="1"
+                  step="1"
+                />
+              </div>
               <div className="flex items-end xl:col-span-1">
                 <Button type="submit" disabled={saving} className="w-full gap-2">
                   <Plus size={18} />
@@ -324,78 +366,94 @@ const DiscountCoupons = () => {
                     <TableRow>
                       <TableHead>Code</TableHead>
                       <TableHead>Discount</TableHead>
+                      <TableHead>Type</TableHead>
                       <TableHead>Min Order</TableHead>
+                      <TableHead>Uses</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Created</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {coupons.map((coupon) => (
-                      <TableRow key={coupon.id}>
-                        <TableCell className="font-mono font-semibold text-base">
-                          {coupon.code}
-                        </TableCell>
-                        <TableCell className="font-semibold text-base">
-                          {formatCouponOffer(coupon)}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          ₹{coupon.min_order_value.toFixed(0)}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={coupon.is_active ? 'default' : 'secondary'}
-                            className={coupon.is_active ? 'bg-green-100 text-green-800 hover:bg-green-100' : ''}
-                          >
-                            {coupon.is_active ? 'Active' : 'Inactive'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {formatDate(coupon.created_at)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleToggle(coupon)}
-                              title={coupon.is_active ? 'Deactivate' : 'Activate'}
+                    {coupons.map((coupon) => {
+                      const usesDisplay = coupon.total_usage_limit 
+                        ? `${coupon.used_count || 0}/${coupon.total_usage_limit}`
+                        : `${coupon.used_count || 0}/∞`;
+                      
+                      return (
+                        <TableRow key={coupon.id}>
+                          <TableCell className="font-mono font-semibold text-base">
+                            {coupon.code}
+                          </TableCell>
+                          <TableCell className="font-semibold text-base">
+                            {formatCouponOffer(coupon)}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            <Badge variant="outline" className="text-xs">
+                              {coupon.coupon_type || 'FLAT'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            ₹{coupon.min_order_value.toFixed(0)}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {usesDisplay}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={coupon.is_active ? 'default' : 'secondary'}
+                              className={coupon.is_active ? 'bg-green-100 text-green-800 hover:bg-green-100' : ''}
                             >
-                              {coupon.is_active ? (
-                                <ToggleRight size={20} className="text-green-600" />
-                              ) : (
-                                <ToggleLeft size={20} className="text-muted-foreground" />
-                              )}
-                            </Button>
+                              {coupon.is_active ? 'Active' : 'Inactive'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-sm">
+                            {formatDate(coupon.created_at)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleToggle(coupon)}
+                                title={coupon.is_active ? 'Deactivate' : 'Activate'}
+                              >
+                                {coupon.is_active ? (
+                                  <ToggleRight size={20} className="text-green-600" />
+                                ) : (
+                                  <ToggleLeft size={20} className="text-muted-foreground" />
+                                )}
+                              </Button>
 
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
-                                  <Trash2 size={18} />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Coupon</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to delete coupon <strong>"{coupon.code}"</strong>? This cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => handleDelete(coupon)}
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                  >
-                                    Delete
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                    <Trash2 size={18} />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Coupon</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete coupon <strong>"{coupon.code}"</strong>? This cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => handleDelete(coupon)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>

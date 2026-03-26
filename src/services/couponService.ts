@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabaseClient';
 
 export type CouponDiscountType = 'flat' | 'percentage';
+export type CouponType = 'FLAT' | 'PERCENT' | 'FIRST_ORDER';
 
 export interface Coupon {
   id: string;
@@ -11,6 +12,10 @@ export interface Coupon {
   max_discount: number | null;
   is_active: boolean;
   expires_at?: string | null;
+  coupon_type?: CouponType;
+  total_usage_limit?: number | null;
+  used_count?: number;
+  specific_product_id?: string | null;
   created_at: string;
 }
 
@@ -36,6 +41,10 @@ const normalizeCoupon = (row: any): Coupon => ({
   max_discount: row.max_discount == null ? null : toNumber(row.max_discount),
   is_active: Boolean(row.is_active),
   expires_at: row.expires_at || null,
+  coupon_type: row.coupon_type || 'FLAT',
+  total_usage_limit: row.total_usage_limit || null,
+  used_count: toNumber(row.used_count),
+  specific_product_id: row.specific_product_id || null,
   created_at: row.created_at,
 });
 
@@ -104,7 +113,7 @@ export const getActiveCoupons = async (): Promise<Coupon[]> => {
   const nowIso = new Date().toISOString();
   const { data, error } = await supabase
     .from('coupons')
-    .select('id, code, discount_type, discount_value, min_order_value, max_discount, is_active, expires_at, created_at')
+    .select('id, code, discount_type, discount_value, min_order_value, max_discount, is_active, expires_at, coupon_type, total_usage_limit, used_count, specific_product_id, created_at')
     .eq('is_active', true)
     .or(`expires_at.is.null,expires_at.gte.${nowIso}`)
     .order('created_at', { ascending: false });
@@ -126,7 +135,7 @@ export const validateCouponCode = async (code: string, orderTotal: number) => {
   const nowIso = new Date().toISOString();
   const { data, error } = await supabase
     .from('coupons')
-    .select('id, code, discount_type, discount_value, min_order_value, max_discount, is_active, expires_at, created_at')
+    .select('id, code, discount_type, discount_value, min_order_value, max_discount, is_active, expires_at, coupon_type, total_usage_limit, used_count, specific_product_id, created_at')
     .eq('code', normalizedCode)
     .eq('is_active', true)
     .or(`expires_at.is.null,expires_at.gte.${nowIso}`)
@@ -176,4 +185,79 @@ export const getBestEligibleCoupon = async (orderTotal: number): Promise<Applied
   });
 
   return best;
+};
+
+// Check if current user has already used a specific coupon
+export const hasUserUsedCoupon = async (couponId: string): Promise<boolean> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return false;
+  }
+
+  const { data, error } = await supabase
+    .from('coupon_usage')
+    .select('id', { count: 'exact', head: true })
+    .eq('coupon_id', couponId)
+    .eq('user_id', user.id);
+
+  if (error) {
+    console.error('Error checking coupon usage:', error);
+    return false;
+  }
+
+  return (data && data.length > 0) || false;
+};
+
+// Check if coupon usage limit has been reached
+export const isCouponUsageLimitReached = (coupon: Coupon): boolean => {
+  if (!coupon.total_usage_limit) {
+    return false; // No limit
+  }
+
+  return (coupon.used_count || 0) >= coupon.total_usage_limit;
+};
+
+// Get user's order count (for first-order coupon eligibility)
+export const getUserOrdersCount = async (): Promise<number> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return 0;
+  }
+
+  const { count, error } = await supabase
+    .from('orders')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .neq('order_status', 'cancelled');
+
+  if (error) {
+    console.error('Error fetching user orders count:', error);
+    return 0;
+  }
+
+  return count || 0;
+};
+
+// Check if user is eligible for first-order coupon
+export const isUserEligibleForFirstOrderCoupon = async (): Promise<boolean> => {
+  const count = await getUserOrdersCount();
+  return count === 0;
+};
+
+// Format coupon info with usage details
+export const formatCouponOfferWithUsage = (coupon: Coupon): string => {
+  let offer = formatCouponOffer(coupon);
+  
+  if (coupon.coupon_type === 'FIRST_ORDER') {
+    offer += ' (First Order Only)';
+  }
+
+  if (coupon.total_usage_limit && coupon.total_usage_limit > 0) {
+    const usesRemaining = Math.max(0, coupon.total_usage_limit - (coupon.used_count || 0));
+    offer += ` - ${usesRemaining} left`;
+  }
+
+  return offer;
 };

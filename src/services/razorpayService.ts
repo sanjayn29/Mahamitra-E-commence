@@ -52,6 +52,10 @@ interface OrderData {
   state?: string;
   country?: string;
   pincode: string;
+  couponCode?: string | null;
+  couponId?: string | null;
+  couponDiscountAmount?: number;
+  couponType?: string;
   items?: Array<{
     productId: string;
     productName: string;
@@ -280,6 +284,43 @@ const saveOrderToDatabase = async (orderData: OrderData, paymentId: string) => {
     }
   }
 
+  // Backend coupon validation (if coupon provided)
+  let finalCouponId: string | null = null;
+  let finalCouponCode: string | null = null;
+  let finalCouponDiscount: number = 0;
+  let finalCouponType: string | null = null;
+
+  if (orderData.couponCode) {
+    const productIds = lineItems.map((item) => item.productId) as string[];
+    
+    const { data: couponValidation, error: couponError } = await supabase.rpc(
+      'validate_and_apply_coupon',
+      {
+        p_coupon_code: orderData.couponCode,
+        p_user_id: user.id,
+        p_order_total: orderData.total - (orderData.walletUsed || 0),
+        p_product_ids: productIds,
+      }
+    );
+
+    if (couponError) {
+      console.error('Coupon validation RPC error:', couponError);
+      throw new Error(`Coupon validation failed: ${couponError.message}`);
+    }
+
+    if (couponValidation && couponValidation.length > 0) {
+      const validation = couponValidation[0];
+      if (!validation.success) {
+        throw new Error(`Coupon validation failed: ${validation.error_message}`);
+      }
+      
+      finalCouponId = validation.coupon_id;
+      finalCouponCode = orderData.couponCode;
+      finalCouponDiscount = Number(validation.discount_amount) || 0;
+      finalCouponType = validation.coupon_type;
+    }
+  }
+
   const orderRows = lineItems.map((item) => ({
     user_id: user.id,
     product_id: item.productId,
@@ -301,6 +342,10 @@ const saveOrderToDatabase = async (orderData: OrderData, paymentId: string) => {
     payment_id: paymentId,
     payment_status: 'completed',
     order_status: 'pending',
+    coupon_id: finalCouponId,
+    coupon_code: finalCouponCode,
+    coupon_discount_amount: finalCouponDiscount,
+    coupon_type: finalCouponType,
     created_at: new Date().toISOString(),
   }));
 
@@ -353,6 +398,20 @@ const saveOrderToDatabase = async (orderData: OrderData, paymentId: string) => {
     }
 
     throw new Error('No order rows were created');
+  }
+
+  // Record coupon usage if coupon was applied
+  if (finalCouponId && data[0].id) {
+    const { error: usageError } = await supabase.rpc('record_coupon_usage', {
+      p_coupon_id: finalCouponId,
+      p_user_id: user.id,
+      p_order_id: data[0].id,
+    });
+
+    if (usageError) {
+      console.warn('Failed to record coupon usage:', usageError);
+      // Don't throw - order already created successfully
+    }
   }
 
   return data[0];
