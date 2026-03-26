@@ -3,7 +3,7 @@
 
 Mahamitra is a premium e-commerce platform dedicated to exquisite women's textiles, ethnic wear, and luxury fashion. We offer a curated collection of silk sarees, designer apparel, and handcrafted fabrics that blend traditional craftsmanship with modern aesthetics.
 
-## Features
+## Features of consultancy project
 
 - **Luxe Design System**: A visually stunning, high-end interface with smooth animations and elegant typography.
 - **Product Showcase**: Detailed product views with high-quality imagery and size/color variations.
