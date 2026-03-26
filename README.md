@@ -1,4 +1,5 @@
-# Mahamitra - Luxury Women's Apparel
+# AI-Powered E-Commerce and Finance Management System
+# Mahamitra - A Luxury Women's Apparel
 
 Mahamitra is a premium e-commerce platform dedicated to exquisite women's textiles, ethnic wear, and luxury fashion. We offer a curated collection of silk sarees, designer apparel, and handcrafted fabrics that blend traditional craftsmanship with modern aesthetics.
 
