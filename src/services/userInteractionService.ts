@@ -220,8 +220,7 @@ export const cartService = {
       .select('*')
       .eq('user_id', user.id)
       .eq('product_id', productId)
-      .eq('product_type', productType)
-      .eq('variant_id', variantId || null);
+      .eq('product_type', productType);
 
     if (selectError) {
       console.error('Error checking for existing cart item:', selectError);
@@ -255,6 +254,36 @@ export const cartService = {
         console.error('Cart update error:', updateError);
         throw updateError;
       }
+      return data;
+    }
+
+    // Some deployments still enforce one row per user/product/type.
+    // Reuse the existing row instead of failing on unique conflicts.
+    const fallbackExisting = existingItems && existingItems.length > 0 ? existingItems[0] : null;
+    if (fallbackExisting) {
+      const newQuantity = fallbackExisting.quantity + quantity;
+
+      if (maxQuantity !== null && newQuantity > maxQuantity) {
+        throw new Error(`Only ${maxQuantity} item(s) available for this variant`);
+      }
+
+      const { data, error: fallbackUpdateError } = await supabase
+        .from('cart_items')
+        .update({
+          quantity: newQuantity,
+          size: normalizedSize,
+          color: normalizedColor,
+          variant_id: variantId || null,
+        })
+        .eq('id', fallbackExisting.id)
+        .select()
+        .single();
+
+      if (fallbackUpdateError) {
+        console.error('Cart fallback update error:', fallbackUpdateError);
+        throw fallbackUpdateError;
+      }
+
       return data;
     }
 

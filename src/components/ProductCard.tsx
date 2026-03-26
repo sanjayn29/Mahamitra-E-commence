@@ -7,6 +7,7 @@ import { FavoriteButton } from '@/components/FavoriteButton';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
+import { variantService } from '@/services/variantService';
 
 interface ProductCardProps {
   product: EnhancedProduct;
@@ -37,23 +38,20 @@ const ProductCard = ({ product }: ProductCardProps) => {
       return;
     }
 
-    // Variant-aware products should be configured on the product page.
-    const hasMultipleSizes = product.sizes && product.sizes.length > 1 &&
-      !(product.sizes.length === 1 && product.sizes[0] === 'Free Size');
-    const hasMultipleColors = product.colors && product.colors.length > 1 &&
-      !(product.colors.length === 1 && product.colors[0] === 'Default');
-    const sizeRequired = product.size_required !== false;
-
-    if ((sizeRequired && hasMultipleSizes) || hasMultipleColors) {
-      toast.info('Please choose the variant first', { description: 'Open the product page to select size and color.' });
-      navigate(`/product/${product.id}`);
-      return;
-    }
-
     try {
       setAddingToCart(true);
-      const size = (!sizeRequired || !hasMultipleSizes) ? (product.sizes?.[0] || '') : '';
-      const color = product.colors?.[0] || '';
+
+      const variants = await variantService.getVariants(product.id, product.category);
+      const inStockVariants = variants.filter((variant) => (variant.stock_quantity ?? 0) > 0);
+      const displayedImage = product.images[0] || product.image || '';
+
+      const defaultVariant = inStockVariants.find((variant) => variant.image_url === displayedImage)
+        || inStockVariants[0]
+        || variants[0]
+        || null;
+
+      const size = defaultVariant?.size || product.sizes?.[0] || '';
+      const color = defaultVariant?.color || product.colors?.[0] || '';
 
       await addItem(
         {
@@ -69,7 +67,8 @@ const ProductCard = ({ product }: ProductCardProps) => {
         } as any,
         1,
         size,
-        color
+        color,
+        defaultVariant?.id
       );
     } catch (error) {
       console.error('Add to cart error:', error);
