@@ -1,65 +1,62 @@
-# AI-Powered E-Commerce and Finance Management System
-# Mahamitra - A Luxury Women's Apparel
+# 🛒 Mahamitra
 
-Mahamitra is a premium e-commerce platform dedicated to exquisite women's textiles, ethnic wear, and luxury fashion. We offer a curated collection of silk sarees, designer apparel, and handcrafted fabrics that blend traditional craftsmanship with modern aesthetics.
+**Mahamitra** is a modern eCommerce web application designed to provide a smooth and reliable online shopping experience.  
+The platform is built with a **modern full-stack architecture** using React and Supabase, enabling fast performance, secure authentication, and scalable backend services.
 
-## Features of consultancy project
-
-- **Luxe Design System**: A visually stunning, high-end interface with smooth animations and elegant typography.
-- **Product Showcase**: Detailed product views with high-quality imagery and size/color variations.
-- **Shopping Experience**: Intuitive cart management and a secure, multi-step checkout process.
-- **Responsive Layout**: Seamless shopping experience across all devices, from mobile to desktop.
-- **Admin Dashboard**: Comprehensive management tools for products and orders and finance management.
-
-## Tech Stack
-
-- **Frontend**: [React](https://reactjs.org/) with [TypeScript](https://www.typescriptlang.org/)
-- **Styling**: [Tailwind CSS](https://tailwindcss.com/) & [shadcn/ui](https://ui.shadcn.com/)
-- **Bundler**: [Vite](https://vitejs.dev/)
-- **Routing**: [React Router](https://reactrouter.com/)
-- **State Management**: [React Query](https://tanstack.com/query)
-
-## Getting Started
-
-### Prerequisites
-
-- [Node.js](https://nodejs.org/) (v18 or higher)
-- npm or yarn 
-
-### Installation
-
-1. Clone the repository:
-   ```sh
-   git clone <repository-url>
-   ```
-
-2. Navigate to the project directory:
-   ```sh
-   cd mahamitra-ecommerce
-   ```
-
-3. Install dependencies:
-   ```sh
-   npm install
-   ```
-
-4. Start the development server:
-   ``` sh
-   npm run dev
-   ```
-
-## Development
-
-The project uses a structured architecture:
-- `src/components`: Reusable UI components.
-- `src/pages`: Main application views.
-- `src/layouts`: Page structure templates.
-- `src/context`: React Context for global state management.
-- `src/hooks`: Custom React hooks.
-
-## License
-
-This project is proprietary and confidential.
+🌐 Live Website: https://www.mahamitra.app/
 
 ---
-© 2026 Mahamitra. All rights reserved.
+
+# 🚀 Features
+
+- 🛍️ Product browsing and shopping experience  
+- 🔐 Secure user authentication  
+- 🧾 Order management system  
+- 💳 Online payment integration  
+- 📧 Email notifications for users  
+- ⚡ Fast and scalable backend using serverless functions  
+- 📱 Responsive design for desktop and mobile devices  
+
+---
+
+# 🧑‍💻 Tech Stack
+
+### Frontend
+- React
+- JavaScript
+- HTML5
+- CSS3
+
+### Backend & Database
+- Supabase
+- Supabase Edge Functions
+
+### Integrations
+- Razorpay (Payment Gateway)
+- EmailJS (Email Notifications)
+
+---
+
+# 🔒 Security & Performance
+
+- Secure authentication handled by **Supabase**
+- Serverless backend logic using **Edge Functions**
+- Secure payment transactions via **Razorpay**
+- Fast client-side rendering with **React**
+
+---
+
+# 👨‍💻 Developer
+
+**Sanjay N**
+🚀 Freelancer  
+
+🌐 Portfolio: https://sanjayn.me  
+💼 LinkedIn: https://linkedin.com/in/sanjayn29  
+🐙 GitHub: https://github.com/sanjayn29  
+
+---
+
+# ⭐ Support
+
+If you like this project, consider giving it a **star ⭐ on GitHub** to support the development.
