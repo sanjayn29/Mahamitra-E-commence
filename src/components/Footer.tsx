@@ -139,15 +139,7 @@ const Footer = () => {
               >
                 Saravana P
               </a>
-              {' '}at{' '}
-              <a
-                href="https://www.neovateai.tech"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline transition-colors font-semibold"
-              >
-                Neovate
-              </a>
+                  
             </p>
           </div>
         </div>
