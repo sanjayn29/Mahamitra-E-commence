@@ -118,24 +118,37 @@ const Footer = () => {
       {/* Bottom Bar */}
       <div className="border-t border-background/10 py-6">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm font-sans text-background/60">
+          <div className="flex flex-col items-center gap-2 text-sm font-sans text-background/60 text-center">
             <p>© 2026 Mahamitra. All rights reserved.</p>
-            <a
-              href="https://www.sanjayn.me"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-background/60 hover:text-primary transition-colors"
-            >
-              Developed by Sanjay N
-            </a>
-            <a
-              href="https://www.saravana-p.tech"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-background/60 hover:text-primary transition-colors"
-            >
-              Feature updations and Testing by Saravana P
-            </a>
+            <p>
+              Developed by{' '}
+              <a
+                href="https://www.sanjayn.me"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline transition-colors font-semibold"
+              >
+                Sanjay N
+              </a>
+              {' '}&amp;{' '}
+              <a
+                href="https://saravana-p.vercel.app"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline transition-colors font-semibold"
+              >
+                Saravana P
+              </a>
+              {' '}at{' '}
+              <a
+                href="https://www.neovateai.tech"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline transition-colors font-semibold"
+              >
+                Neovate
+              </a>
+            </p>
           </div>
         </div>
       </div>
