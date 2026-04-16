@@ -312,7 +312,7 @@ const HomePage = () => {
 
         {/* Decorative Elements */}
         <div className="absolute right-0 bottom-0 w-1/2 h-full hidden lg:block">
-          <div className="absolute bottom-0 right-10 w-96 h-[500px] bg-[url('/1000192450.jpg')] bg-cover bg-[center_8%] rounded-t-full opacity-80" />
+          <div className="absolute bottom-0 right-10 w-96 h-[500px] bg-[url('/hero-image.jpg')] bg-cover bg-[center_8%] rounded-t-full opacity-80" />
         </div>
       </section>
 
