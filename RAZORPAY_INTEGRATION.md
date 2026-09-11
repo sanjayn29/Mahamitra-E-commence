@@ -39,9 +39,7 @@ Run the SQL script to create the orders table in your Supabase database:
 ### Step 2: Environment Variables
 1. Open `.env` file
 2. Add your Razorpay test key:
-   ```env
-   VITE_RAZORPAY_KEY_ID=rzp_test_AbCdEfGhIjKlMnOp
-   ```
+  
 3. Save the file
 4. **Restart your dev server** for changes to take effect
 
